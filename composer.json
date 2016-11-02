@@ -39,7 +39,7 @@
     "repositories": [
         {
             "type": "vcs",
-            "url":  "git@github.com:comodojo/daemon.git"
+            "url":  "git@github.com:comodojo/foundation.git"
         }
     ]
 }
