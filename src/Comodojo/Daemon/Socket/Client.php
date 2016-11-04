@@ -1,5 +1,6 @@
 <?php namespace Comodojo\Daemon\Socket;
 
+use \Comodojo\Exception\SocketException;
 use \Exception;
 
 class Client extends AbstractSocket {
@@ -11,11 +12,11 @@ class Client extends AbstractSocket {
         $greeter = $this->readGreeter();
 
         if ( $greeter->status != 'connected' ) {
-            throw new Exception("Socket connect failed: ".$greeter->status);
+            throw new SocketException("Socket connect failed: ".$greeter->status);
         }
 
         if ( $greeter->version != self::VERSION ) {
-            throw new Exception("Socket connect failed: socket interface version mismatch");
+            throw new SocketException("Socket connect failed: socket interface version mismatch");
         }
 
         return $this;
@@ -28,9 +29,9 @@ class Client extends AbstractSocket {
 
     }
 
-    public static function create($handler) {
+    public static function create($handler, $read_buffer = null) {
 
-        $client = new Client($handler);
+        $client = new Client($handler, $read_buffer);
 
         return $client->connect();
 
@@ -67,7 +68,7 @@ class Client extends AbstractSocket {
 
     protected function read() {
 
-        $datagram = stream_socket_recvfrom($this->socket, 4096);
+        $datagram = stream_socket_recvfrom($this->socket, $this->read_buffer);
 
         return $datagram;
 

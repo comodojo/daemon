@@ -1,7 +1,4 @@
-<?php namespace Comodojo\Extender\Events;
-
-use \Comodojo\Daemon\Process;
-use \Comodojo\Foundation\Events\AbstractEvent;
+<?php namespace Comodojo\Daemon\Utils;
 
 /**
  * @package     Comodojo Daemon
@@ -19,21 +16,16 @@ use \Comodojo\Foundation\Events\AbstractEvent;
  * THE SOFTWARE.
  */
 
-class SignalEvent extends AbstractEvent {
+class PropertiesValidator {
 
-    private $process;
+    final public static function looptime($looptime) {
 
-    public function __construct($signal, Process $process) {
-
-        parent::__construct("daemon.signal.$signal");
-
-        $this->process = $process;
-
-    }
-
-    public function getProcess() {
-
-        return $this->process;
+        return filter_var($looptime, FILTER_VALIDATE_INT, array(
+            'options' => array(
+                'default' => 1,
+                'min_range' => 1
+            )
+        ));
 
     }
 

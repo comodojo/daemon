@@ -1,20 +1,38 @@
 <?php namespace Comodojo\Daemon\Socket;
 
+use \Comodojo\Daemon\Process;
+use \Comodojo\Daemon\Events\SocketEvent;
+use \Comodojo\Foundation\Events\Manager as EventsManager;
+use \Comodojo\Foundation\Validation\DataFilter;
 use \Psr\Log\LoggerInterface;
+use \Comodojo\Exception\SocketException;
+use \Exception;
 
 class Server extends AbstractSocket {
 
     private $active;
 
-    private $commands;
+    private $process;
 
-    private $logger;
+    public $commands;
 
-    public function __construct($handler, LoggerInterface $logger) {
+    public $logger;
 
-        parent::__construct($handler);
+    public $events;
+
+    public function __construct(
+        $handler,
+        LoggerInterface $logger,
+        EventsManager $events,
+        Process $process,
+        $read_buffer = null
+    ) {
+
+        parent::__construct($handler, $read_buffer);
 
         $this->logger = $logger;
+        $this->events = $events;
+        $this->process = $process;
 
         $this->commands = new Commands();
 
@@ -22,21 +40,11 @@ class Server extends AbstractSocket {
 
     }
 
-    public function commands() {
-
-        return $this->commands;
-
-    }
-
-    public function logger() {
-
-        return $this->logger;
-
-    }
-
     public function connect() {
 
         $this->socket = stream_socket_server($this->handler, $errno, $errorMessage);
+
+        register_shutdown_function(array($this, 'close'));
 
         return $this;
 
@@ -46,13 +54,21 @@ class Server extends AbstractSocket {
 
         stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
 
-        unlink($this->handler);
+        list($handler, $resource) = preg_split( '@(:\/\/)@', $this->handler );
+
+        if ( $handler == 'unix' ) unlink($resource);
 
     }
 
-    public static function create($handler, LoggerInterface $logger) {
+    public static function create(
+        $handler,
+        LoggerInterface $logger,
+        EventsManager $events,
+        Process $process,
+        $read_buffer = null
+    ) {
 
-        $socket = new Server($handler, $logger);
+        $socket = new Server($handler, $logger, $events, $process, $read_buffer);
 
         $socket->connect();
 
@@ -76,19 +92,23 @@ class Server extends AbstractSocket {
 
         $this->active = false;
 
+        // $this->close();
+
     }
 
-    public function loop() {
+    protected function loop() {
 
         $clients = [];
 
         while($this->active) {
 
+            $this->events->emit( new SocketEvent('loop', $this->process) );
+
             $sockets = $clients;
             $sockets[] = $this->socket;
 
-            if( stream_select($sockets, $write, $except, 200000 ) === false ) {
-                throw new Exception("Error selecting sockets");
+            if( @stream_select($sockets, $write, $except, 3) === false ) {
+                throw new SocketException("Error selecting sockets");
             }
 
             // Accept new connections (if any)
@@ -100,11 +120,7 @@ class Server extends AbstractSocket {
 
                     $clients[] = $client;
 
-                    $message = new Greeter();
-
-                    $message->status = 'connected';
-
-                    $this->write($client, $message);
+                    $this->open($client);
 
                 }
 
@@ -149,7 +165,7 @@ class Server extends AbstractSocket {
 
     private function read($client) {
 
-        $datagram = stream_socket_recvfrom($client, 4096);
+        $datagram = stream_socket_recvfrom($client, $this->read_buffer);
 
         if ('' !== $datagram && false !== $datagram) {
 
@@ -205,11 +221,25 @@ class Server extends AbstractSocket {
 
     }
 
+    private function open($client) {
+
+        $this->events->emit( new SocketEvent('client.connect', $this->process) );
+
+        $message = new Greeter();
+
+        $message->status = 'connected';
+
+        $this->write($client, $message);
+
+    }
+
     private function hangup($client) {
 
         stream_socket_shutdown($client, STREAM_SHUT_RDWR);
         stream_set_blocking($client, false);
         fclose($client);
+
+        $this->events->emit( new SocketEvent('client.hangup', $this->process) );
 
     }
 

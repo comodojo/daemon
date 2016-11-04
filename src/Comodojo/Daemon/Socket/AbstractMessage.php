@@ -4,8 +4,6 @@ use \Comodojo\Foundation\DataAccess\Model;
 
 abstract class AbstractMessage extends Model {
 
-    protected $data = array();
-
     protected $mode = self::PROTECTDATA;
 
     public function __toString() {

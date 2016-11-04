@@ -53,12 +53,12 @@ abstract class Process extends DataModel {
             throw new Exception("Missing pcntl signaling");
         }
 
-        $this->logger = is_null($logger) ? LogManager::create('daemon', false) : $logger;
-        $this->events = is_null($events) ? new EventsManager($this->logger) : $events;
+        $this->logger = is_null($logger) ? LogManager::create('daemon', false)->getLogger() : $logger;
+        $this->events = is_null($events) ? EventsManager::create($this->logger) : $events;
 
-        // get current PID and timestamp
+        // get current PID
         $this->pid = ProcessTools::getPid();
-
+        
         if ( ProcessTools::setNiceness($niceness) === false ) {
             $this->logger->warning("Unable to set process niceness to $niceness");
         }
