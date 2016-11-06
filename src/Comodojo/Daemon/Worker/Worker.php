@@ -1,7 +1,6 @@
-<?php namespace Comodojo\Daemon\Events;
+<?php namespace Comodojo\Daemon\Worker;
 
-use \Comodojo\Daemon\Process;
-use \Comodojo\Foundation\Events\AbstractEvent;
+use \Comodojo\Foundation\DataAccess\Model as DataModel;
 
 /**
  * @package     Comodojo Daemon
@@ -19,22 +18,14 @@ use \Comodojo\Foundation\Events\AbstractEvent;
  * THE SOFTWARE.
  */
 
-class SocketEvent extends AbstractEvent {
+class Worker extends DataModel {
 
-    private $process;
+    protected $model = self::PROTECTDATA;
 
-    public function __construct($event, Process $process) {
-
-        parent::__construct("daemon.socket.$event");
-
-        $this->process = $process;
-
-    }
-
-    public function getProcess() {
-
-        return $this->process;
-
-    }
+    protected $data = array(
+        'pid' => null,
+        'instance' => null,
+        'looptime' => 1
+    );
 
 }

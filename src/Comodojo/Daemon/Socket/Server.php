@@ -56,7 +56,7 @@ class Server extends AbstractSocket {
 
         list($handler, $resource) = preg_split( '@(:\/\/)@', $this->handler );
 
-        if ( $handler == 'unix' ) unlink($resource);
+        if ( $handler == 'unix' /* && file_exists($resource) */ ) unlink($resource);
 
     }
 
@@ -84,7 +84,7 @@ class Server extends AbstractSocket {
 
         $this->loop();
 
-        $this->close();
+        // $this->close();
 
     }
 
@@ -197,7 +197,7 @@ class Server extends AbstractSocket {
 
             try {
 
-                $response->message = call_user_func($callable, $request->payload);
+                $response->message = call_user_func($callable, $request->payload, $this->process);
 
                 $response->status = true;
 

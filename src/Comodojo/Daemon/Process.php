@@ -1,6 +1,6 @@
 <?php namespace Comodojo\Daemon;
 
-use \Comodojo\Daemon\Events\SignalEvent;
+use \Comodojo\Daemon\Events\PosixEvent;
 use \Comodojo\Daemon\Utils\ProcessTools;
 use \Comodojo\Daemon\Utils\Checks;
 use \Comodojo\Foundation\DataAccess\Model as DataModel;
@@ -58,7 +58,7 @@ abstract class Process extends DataModel {
 
         // get current PID
         $this->pid = ProcessTools::getPid();
-        
+
         if ( ProcessTools::setNiceness($niceness) === false ) {
             $this->logger->warning("Unable to set process niceness to $niceness");
         }
@@ -112,7 +112,7 @@ abstract class Process extends DataModel {
 
             $this->logger->info("Received TERM signal, shutting down process gracefully");
 
-            $this->events->emit( new SignalEvent($signal, $this) );
+            $this->events->emit( new PosixEvent($signal, $this) );
 
             $this->end(0);
 
@@ -131,7 +131,7 @@ abstract class Process extends DataModel {
 
             $this->logger->info("Received TERM signal, shutting down process");
 
-            $this->events->emit( new SignalEvent($signal, $this) );
+            $this->events->emit( new PosixEvent($signal, $this) );
 
             $this->end(1);
 
@@ -150,7 +150,7 @@ abstract class Process extends DataModel {
 
             $this->logger->info("Received $signal signal, firing associated event(s)");
 
-            $this->events->emit( new SignalEvent($signal, $this) );
+            $this->events->emit( new PosixEvent($signal, $this) );
 
         }
 

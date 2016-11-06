@@ -1,6 +1,6 @@
 <?php namespace Comodojo\Daemon\Tests\Mock;
 
-require __DIR__ . "/../../bootstrap.php";
+// require __DIR__ . "/../../bootstrap.php";
 
 use \Comodojo\Daemon\Daemon as AbstractDaemon;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
@@ -19,14 +19,15 @@ class Daemon extends AbstractDaemon {
 
     public function setup() {
 
-        $this->socket->commands->add('echo', function($data) {
+        $this->socket->commands->add('echo', function($data, $daemon) {
             return $data;
+        });
+
+        $this->socket->commands->add('close', function ($data, $daemon) {
+            $daemon->stop();
+            return "Closing daemon";
         });
 
     }
 
 }
-
-$daemon = new Daemon([], LogManager::create('daemon', true)->getLogger());
-
-$daemon->init();

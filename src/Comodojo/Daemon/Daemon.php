@@ -5,10 +5,12 @@
 use \Comodojo\Daemon\Utils\PropertiesValidator;
 use \Comodojo\Daemon\Utils\Checks;
 use \Comodojo\Daemon\Socket\Server as SocketServer;
-// use \Comodojo\Daemon\Worker\Manager as WorkerManager;
+use \Comodojo\Daemon\Worker\Manager as WorkerManager;
+use \Comodojo\Daemon\Worker\Worker;
 use \Comodojo\Daemon\Locker\PidLock;
 use \Comodojo\Daemon\Listeners\WorkerWatchdog;
 use \Comodojo\Daemon\Utils\ProcessTools;
+use \Comodojo\Daemon\Console\LogHandler;
 use \Comodojo\Foundation\Utils\ClassProperties;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Psr\Log\LoggerInterface;
@@ -48,7 +50,7 @@ abstract class Daemon extends Process {
     protected static $default_properties = array(
         'pidfile' => 'daemon.pid',
         'socketfile' => 'unix://daemon.sock',
-        'socketbuffer' => 4096,
+        'socketbuffer' => 8192,
         'niceness' => 0,
         'arguments' => '\\Comodojo\\Daemon\\Console\\DaemonArguments',
         'description' => 'Comodojo Daemon'
@@ -67,14 +69,7 @@ abstract class Daemon extends Process {
         // prepare the pidlock
         $this->pidlock = new PidLock($properties->pidfile);
 
-        // prepare the socket
-        // $this->socket = SocketServer::create(
-        //     $properties->socketfile,
-        //     $this->logger,
-        //     $this->events,
-        //     $this,
-        //     $properties->socketbuffer
-        // );
+        // init the socket
         $this->socket = new SocketServer(
             $properties->socketfile,
             $this->logger,
@@ -82,6 +77,9 @@ abstract class Daemon extends Process {
             $this,
             $properties->socketbuffer
         );
+
+        // init the worker manager
+        $this->workers = new WorkerManager($this->logger, $this->events);
 
         // init the console
         $this->console = new CLImate();
@@ -96,12 +94,14 @@ abstract class Daemon extends Process {
 
         $this->console->arguments->parse();
 
-        if ( $this->console->arguments->get('help') === true ) {
+        if ( $this->console->arguments->defined('help') ) {
             // show help and exit
             $this->console->usage();
             $this->end(0);
-        } else if ( $this->console->arguments->get('foreground') === true ) {
-            // run extender as a deamon
+        } else if ( $this->console->arguments->defined('foreground') ) {
+            if ( $this->console->arguments->defined('verbose') ) {
+                $this->logger->pushHandler(new LogHandler());
+            }
             $this->start();
         } else {
             // run extender as a normal foreground process
@@ -112,25 +112,12 @@ abstract class Daemon extends Process {
 
     public function daemonize() {
 
-        $pid = pcntl_fork();
+        $pid = $this->fork();
 
-        if ( $pid == -1 ) {
-            $this->logger->error('Could not create daemon (fork error)');
-            $this->cleanup = false;
-            $this->end(1);
-        }
-
-        if ( $pid ) {
-            $this->logger->info("Daemon created with pid $pid");
-            $this->cleanup = false;
-            $this->end(0);
-        }
+        $this->detach();
 
         // update pid reference (we have a new daemon)
-        $this->pid = ProcessTools::getPid();
-
-        // become a session leader
-        posix_setsid();
+        $this->pid = $pid;
 
         // autostart daemon
         $this->start();
@@ -139,18 +126,15 @@ abstract class Daemon extends Process {
 
     public function start() {
 
-        // init worker (if any)
-        //     - unset pidlock and socket components
-        //     - spinup worker
-        //     - attach posix signals
-        //     - start worker loop
+        foreach ($this->workers->get() as $name => $worker) {
 
-        $this->pidlock->lock($this->pid);
-        $this->socket->connect();
+            $this->workers->setPid($name, $this->launch($worker));
 
-        $this->setup();
+        }
 
         $this->becomeSupervisor();
+
+        $this->setup();
 
         try {
 
@@ -168,12 +152,20 @@ abstract class Daemon extends Process {
 
     public function stop() {
 
+        $this->logger->notice("Stopping daemon...");
+
+        $this->workers->stop();
+
         $this->socket->stop();
+
         $this->pidlock->release();
 
     }
 
     private function becomeSupervisor() {
+
+        $this->pidlock->lock($this->pid);
+        $this->socket->connect();
 
         // $this->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopDaemon');
         // $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopDaemon');
@@ -186,6 +178,148 @@ abstract class Daemon extends Process {
         // }
 
         //pcntl_signal_dispatch();
+
+    }
+
+    private function createWorker() {
+
+        // init worker (if any)
+        //     - fork worker
+        //     - unset pidlock and socket components
+        //     - spinup worker
+        //     - attach posix signals
+        //     - start worker loop
+
+        $pid = pcntl_fork();
+
+        if ( $pid == -1 ) {
+            $this->logger->error('Could not create worker (fork error)');
+            $this->end(1);
+        }
+
+        if ( $pid ) {
+            $this->logger->info("Worker created with pid $pid");
+            return $pid;
+        }
+
+        unset($this->pidlock);
+        // This will not work
+        // unset($this->socket);
+
+        $this->pid = ProcessTools::getPid();
+
+        $this->worker->spinup();
+
+        $this->worker->loop();
+
+    }
+
+    private function fork() {
+
+        $pid = pcntl_fork();
+
+        if ( $pid == -1 ) {
+            $this->logger->error('Could not create daemon (fork error)');
+            $this->end(1);
+        }
+
+        if ( $pid ) {
+            $this->logger->info("Daemon created with pid $pid");
+            $this->end(0);
+        }
+
+        return ProcessTools::getPid();
+
+    }
+
+    private function detach() {
+
+        if (is_resource(STDOUT)) fclose(STDOUT);
+        if (is_resource(STDERR)) fclose(STDERR);
+        if (is_resource(STDIN)) fclose(STDIN);
+
+        // become a session leader
+        $sid = posix_setsid();
+
+        if ( $sid < 0 ) {
+            $this->logger->error("Unable to become session leader");
+            $this->end(1);
+        }
+
+    }
+
+    private function launch(Worker $worker) {
+
+        $name = $worker->instance->getName();
+
+        // fork worker
+        $pid = pcntl_fork();
+
+        if ( $pid == -1 ) {
+            $this->logger->error("Could not create worker $name (fork error)");
+            $this->end(1);
+        }
+
+        if ( $pid ) {
+            $this->logger->info("Worker $name created with pid $pid");
+            return $pid;
+        }
+
+        // declare ticks
+        declare(ticks=5);
+
+        // unset supervisor components
+        unset($this->socket);
+        unset($this->workers);
+        unset($this->console);
+
+        // set worker components
+        $this->loopcount = 0;
+        $this->loopactive = true;
+        $this->loopelapsed = 0;
+
+        // update pid reference
+        $this->pid = ProcessTools::getPid();
+
+        // install signals
+        $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
+
+        // launch daemon
+        $worker->instance->spinup();
+
+        while ($this->loopactive) {
+
+            $start = microtime(true);
+
+            // pcntl_signal_dispatch();
+
+            // $this->events->emit( new DaemonEvent('preloop', $this) );
+
+            // if ( $this->runlock->check() && $this->loopactive) {
+
+                // $this->events->emit( new DaemonEvent('loopstart', $this) );
+
+                $worker->instance->loop();
+
+                // $this->events->emit( new DaemonEvent('loopstop', $this) );
+
+                $this->loopcount++;
+
+            // }
+
+            // $this->events->emit( new DaemonEvent('postloop', $this) );
+
+            $this->loopelapsed = (microtime(true) - $start);
+
+            $lefttime = $worker->looptime - $this->loopelapsed;
+
+            if ( $lefttime > 0 ) usleep($lefttime * 1000000);
+
+        }
+
+        $worker->instance->spindown();
+
+        $this->end(0);
 
     }
 

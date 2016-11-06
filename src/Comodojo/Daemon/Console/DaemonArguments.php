@@ -22,7 +22,7 @@ class DaemonArguments extends AbstractArguments {
         'verbose' => [
             'prefix' => 'v',
             'longPrefix' => 'verbose',
-            'description' => 'turn verbose mode on',
+            'description' => 'turn verbose mode on (only in foreground mode)',
             'required' => false,
             'noValue' => true
         ],

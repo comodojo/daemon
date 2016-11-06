@@ -19,7 +19,7 @@ use \Comodojo\Foundation\Events\AbstractEvent;
  * THE SOFTWARE.
  */
 
-class SignalEvent extends AbstractEvent {
+class PosixEvent extends AbstractEvent {
 
     private $process;
 
