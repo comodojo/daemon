@@ -1,8 +1,13 @@
 <?php namespace Comodojo\Daemon\Worker;
 
+use \Comodojo\Daemon\Daemon;
 use \Comodojo\Daemon\Utils\ProcessTools;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
+use \Comodojo\Foundation\DataAccess\IteratorTrait;
+use \Comodojo\Foundation\DataAccess\CountableTrait;
 use \Psr\Log\LoggerInterface;
+use \Iterator;
+use \Countable;
 
 /**
  * @package     Comodojo Daemon
@@ -20,23 +25,30 @@ use \Psr\Log\LoggerInterface;
  * THE SOFTWARE.
  */
 
- class Manager {
+ class Manager implements Iterator, Countable {
+
+    use IteratorTrait;
+    use CountableTrait;
 
     public $logger;
 
     public $events;
 
-    private $workers = [];
+    private $data = [];
 
-    public function __construct(LoggerInterface $logger, EventsManager $events) {
+    private $daemon;
+
+    public function __construct(LoggerInterface $logger, EventsManager $events, Daemon $daemon) {
 
         $this->logger = $logger;
 
         $this->events = $events;
 
+        $this->daemon = $daemon;
+
     }
 
-    public function install(WorkerInterface $worker, $looptime = 1) {
+    public function install(WorkerInterface $worker, $looptime = 1, $forever = false) {
 
         $name = $worker->getName();
 
@@ -47,8 +59,9 @@ use \Psr\Log\LoggerInterface;
         $w = new Worker();
         $w->instance = $worker;
         $w->looptime = $looptime;
+        $w->forever = $forever;
 
-        $this->workers[$name] = $w;
+        $this->data[$name] = $w;
 
         return $this;
 
@@ -60,7 +73,7 @@ use \Psr\Log\LoggerInterface;
             throw new Exception("Worker not installed");
         }
 
-        $this->workers[$name]->pid = $pid;
+        $this->data[$name]->pid = $pid;
 
         return $this;
 
@@ -68,19 +81,101 @@ use \Psr\Log\LoggerInterface;
 
     public function get($name = null) {
 
-        if ( is_null($name) ) return $this->workers;
+        if ( is_null($name) ) return $this->data;
 
         if ( !$this->installed($name) ) {
             throw new Exception("Worker not installed");
         }
 
-        return $this->workers[$name];
+        return $this->data[$name];
 
     }
 
     public function installed($name) {
 
-        return array_key_exists($name, $this->workers);
+        return array_key_exists($name, $this->data);
+
+    }
+
+    public function start($name) {
+
+        $worker = $this->get($name);
+        $daemon = $this->daemon;
+
+        // fork worker
+        $pid = pcntl_fork();
+
+        if ( $pid == -1 ) {
+            $this->logger->error("Could not create worker $name (fork error)");
+            $daemon->end(1);
+        }
+
+        if ( $pid ) {
+            $this->logger->info("Worker $name created with pid $pid");
+            return $pid;
+        }
+
+        // declare ticks
+        declare(ticks=5);
+
+        // remove supervisor flag
+        // $daemon->supervisor = false;
+
+        // unset supervisor components
+        unset($daemon->pidlock);
+        unset($daemon->socket);
+        unset($daemon->workers);
+        unset($daemon->console);
+
+        // set worker components
+        $daemon->loopcount = 0;
+        $daemon->loopactive = true;
+        $daemon->loopelapsed = 0;
+
+        // update pid reference
+        $daemon->pid = ProcessTools::getPid();
+
+        // install signals
+        $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
+
+        // launch daemon
+        $worker->instance->spinup();
+
+        register_shutdown_function(array($worker->instance, 'spindown'));
+
+        while ($daemon->loopactive) {
+
+            $start = microtime(true);
+
+            // pcntl_signal_dispatch();
+
+            // $this->events->emit( new DaemonEvent('preloop', $this) );
+
+            // if ( $this->runlock->check() && $this->loopactive) {
+
+                // $this->events->emit( new DaemonEvent('loopstart', $this) );
+
+                $worker->instance->loop();
+
+                // $this->events->emit( new DaemonEvent('loopstop', $this) );
+
+                $daemon->loopcount++;
+
+            // }
+
+            // $this->events->emit( new DaemonEvent('postloop', $this) );
+
+            $daemon->loopelapsed = (microtime(true) - $start);
+
+            $lefttime = $worker->looptime - $daemon->loopelapsed;
+
+            if ( $lefttime > 0 ) usleep($lefttime * 1000000);
+
+        }
+
+        // $worker->instance->spindown();
+
+        $daemon->end(0);
 
     }
 
@@ -88,10 +183,10 @@ use \Psr\Log\LoggerInterface;
 
         if ( empty($pid) ) {
 
-            foreach ($this->workers as $worker) {
+            foreach ($this->data as $worker) {
 
                 // posix_kill($worker->pid, SIGTERM);
-                ProcessTools::term($worker->pid, 5);
+                ProcessTools::term($worker->pid, 5, SIGINT);
 
             }
 
@@ -99,6 +194,12 @@ use \Psr\Log\LoggerInterface;
 
 
         }
+
+    }
+
+    public function running($pid) {
+
+        return ProcessTools::isRunning($pid);
 
     }
 

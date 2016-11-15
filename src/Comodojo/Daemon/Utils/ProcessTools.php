@@ -25,11 +25,11 @@ class ProcessTools {
      *
      * @return  bool
      */
-    public static function term($pid, $lagger_timeout = 0) {
+    public static function term($pid, $lagger_timeout = 0, $signal = SIGTERM) {
 
         $kill_time = time() + $lagger_timeout;
 
-        $term = posix_kill($pid, SIGTERM);
+        $term = posix_kill($pid, $signal);
 
         while ( time() < $kill_time ) {
 

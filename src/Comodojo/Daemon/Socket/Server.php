@@ -10,9 +10,13 @@ use \Exception;
 
 class Server extends AbstractSocket {
 
+    const DEFAULT_TIMEOUT = 10;
+
     private $active;
 
     private $process;
+
+    private $timeout;
 
     public $commands;
 
@@ -25,7 +29,8 @@ class Server extends AbstractSocket {
         LoggerInterface $logger,
         EventsManager $events,
         Process $process,
-        $read_buffer = null
+        $read_buffer = null,
+        $timeout = null
     ) {
 
         parent::__construct($handler, $read_buffer);
@@ -33,6 +38,10 @@ class Server extends AbstractSocket {
         $this->logger = $logger;
         $this->events = $events;
         $this->process = $process;
+
+        $this->timeout = is_null($timeout)
+            ? self::DEFAULT_TIMEOUT
+            : DataFilter::filterInteger($timeout, 0, 600, self::DEFAULT_TIMEOUT);
 
         $this->commands = new Commands();
 
@@ -65,10 +74,11 @@ class Server extends AbstractSocket {
         LoggerInterface $logger,
         EventsManager $events,
         Process $process,
-        $read_buffer = null
+        $read_buffer = null,
+        $timeout = null
     ) {
 
-        $socket = new Server($handler, $logger, $events, $process, $read_buffer);
+        $socket = new Server($handler, $logger, $events, $process, $read_buffer, $timeout);
 
         $socket->connect();
 
@@ -107,7 +117,7 @@ class Server extends AbstractSocket {
             $sockets = $clients;
             $sockets[] = $this->socket;
 
-            if( @stream_select($sockets, $write, $except, 3) === false ) {
+            if( @stream_select($sockets, $write, $except, $this->timeout) === false ) {
                 throw new SocketException("Error selecting sockets");
             }
 

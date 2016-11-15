@@ -10,14 +10,14 @@ $daemon = new Daemon([], LogManager::create('daemon', false)->getLogger());
 
 $worker = new Worker($daemon->logger, $daemon->events);
 
-$daemon->workers->install($worker, 1);
+$daemon->workers->install($worker, 1, true);
 
 $worker = new Worker($daemon->logger, $daemon->events);
 
-$daemon->workers->install($worker, 2);
+$daemon->workers->install($worker, 2, true);
 
 $worker = new Worker($daemon->logger, $daemon->events);
 
-$daemon->workers->install($worker, 3);
+$daemon->workers->install($worker, 3, true);
 
 $daemon->init();

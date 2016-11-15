@@ -26,17 +26,24 @@ class DaemonArguments extends AbstractArguments {
             'required' => false,
             'noValue' => true
         ],
+        'daemon' => [
+            'prefix' => 'd',
+            'longPrefix' => 'daemon',
+            'description' => 'run as a daemon',
+            'required' => false,
+            'noValue' => true
+        ],
         'foreground' => [
             'prefix' => 'f',
             'longPrefix' => 'foreground',
-            'description' => 'run daemon in foreground',
+            'description' => 'run as a foreground process',
             'required' => false,
             'noValue' => true
         ],
         'help' => [
             'prefix' => 'h',
             'longPrefix' => 'help',
-            'description' => 'show this help',
+            'description' => 'show this help (default)',
             'required' => false,
             'noValue' => true
         ]

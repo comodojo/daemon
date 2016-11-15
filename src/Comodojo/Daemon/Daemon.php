@@ -1,7 +1,5 @@
 <?php namespace Comodojo\Daemon;
 
-//declare(ticks=1);
-
 use \Comodojo\Daemon\Utils\PropertiesValidator;
 use \Comodojo\Daemon\Utils\Checks;
 use \Comodojo\Daemon\Socket\Server as SocketServer;
@@ -17,17 +15,6 @@ use \Psr\Log\LoggerInterface;
 use \League\CLImate\CLImate;
 use \Comodojo\Exception\SocketException;
 use \Exception;
-
-// use \Comodojo\Extender\Components\PidLock;
-// use \Comodojo\Extender\Components\RunLock;
-// use \Comodojo\Extender\Events\DaemonEvent;
-// use \Comodojo\Extender\Listeners\PauseDaemon;
-// use \Comodojo\Extender\Listeners\ResumeDaemon;
-// use \Comodojo\Extender\Utils\Checks;
-// use \Comodojo\Extender\Utils\Validator;
-// use \Comodojo\Dispatcher\Components\Configuration;
-// use \Comodojo\Cache\Cache;
-// use \Comodojo\Dispatcher\Components\EventsManager;
 
 /**
  * @package     Comodojo Daemon
@@ -51,6 +38,7 @@ abstract class Daemon extends Process {
         'pidfile' => 'daemon.pid',
         'socketfile' => 'unix://daemon.sock',
         'socketbuffer' => 8192,
+        'sockettimeout' => 15,
         'niceness' => 0,
         'arguments' => '\\Comodojo\\Daemon\\Console\\DaemonArguments',
         'description' => 'Comodojo Daemon'
@@ -75,11 +63,12 @@ abstract class Daemon extends Process {
             $this->logger,
             $this->events,
             $this,
-            $properties->socketbuffer
+            $properties->socketbuffer,
+            $properties->sockettimeout
         );
 
         // init the worker manager
-        $this->workers = new WorkerManager($this->logger, $this->events);
+        $this->workers = new WorkerManager($this->logger, $this->events, $this);
 
         // init the console
         $this->console = new CLImate();
@@ -92,28 +81,42 @@ abstract class Daemon extends Process {
 
     public function init() {
 
-        $this->console->arguments->parse();
+        $args = $this->console->arguments;
 
-        if ( $this->console->arguments->defined('help') ) {
-            // show help and exit
-            $this->console->usage();
+        $args->parse();
+
+        if ( $args->defined('help') ) {
+
+            $this->console->pad()->green()->usage();
             $this->end(0);
-        } else if ( $this->console->arguments->defined('foreground') ) {
-            if ( $this->console->arguments->defined('verbose') ) {
+
+        } else if ( $args->defined('daemon') ) {
+
+            $this->daemonize();
+
+        } else if ( $args->defined('foreground') ) {
+
+            if ( $args->defined('verbose') ) {
                 $this->logger->pushHandler(new LogHandler());
             }
+
             $this->start();
+
         } else {
-            // run extender as a normal foreground process
-            $this->daemonize();
+
+            $this->console->usage();
+            $this->end(0);
+
         }
 
     }
 
     public function daemonize() {
 
+        // fork script
         $pid = $this->fork();
 
+        // detach from current termina (if any)
         $this->detach();
 
         // update pid reference (we have a new daemon)
@@ -126,9 +129,10 @@ abstract class Daemon extends Process {
 
     public function start() {
 
-        foreach ($this->workers->get() as $name => $worker) {
+        foreach ($this->workers as $name => $worker) {
 
-            $this->workers->setPid($name, $this->launch($worker));
+            // $this->workers->setPid($name, $this->launch($worker));
+            $this->workers->setPid($name, $this->workers->start($name));
 
         }
 
@@ -146,6 +150,7 @@ abstract class Daemon extends Process {
 
         }
 
+        // if ( $this->supervisor ) $this->end(0);
         $this->end(0);
 
     }
@@ -164,53 +169,19 @@ abstract class Daemon extends Process {
 
     private function becomeSupervisor() {
 
+        // set supervisor flag
+        // $this->supervisor = true;
+
+        // lock current PID
         $this->pidlock->lock($this->pid);
+
+        // connect socket
         $this->socket->connect();
 
-        // $this->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopDaemon');
-        // $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopDaemon');
-
-        //$this->events->addListener('daemon.socket.loop', new WorkerWatchdog());
-        $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
-
-        // if ( $this->worker !== null ) {
-        //     $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
-        // }
-
-        //pcntl_signal_dispatch();
-
-    }
-
-    private function createWorker() {
-
-        // init worker (if any)
-        //     - fork worker
-        //     - unset pidlock and socket components
-        //     - spinup worker
-        //     - attach posix signals
-        //     - start worker loop
-
-        $pid = pcntl_fork();
-
-        if ( $pid == -1 ) {
-            $this->logger->error('Could not create worker (fork error)');
-            $this->end(1);
+        // subscribe the WorkerWatchdog (if workers > 0)
+        if ( count($this->workers) > 0 ) {
+            $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
         }
-
-        if ( $pid ) {
-            $this->logger->info("Worker created with pid $pid");
-            return $pid;
-        }
-
-        unset($this->pidlock);
-        // This will not work
-        // unset($this->socket);
-
-        $this->pid = ProcessTools::getPid();
-
-        $this->worker->spinup();
-
-        $this->worker->loop();
 
     }
 
@@ -269,6 +240,7 @@ abstract class Daemon extends Process {
         declare(ticks=5);
 
         // unset supervisor components
+        unset($this->pidlock);
         unset($this->socket);
         unset($this->workers);
         unset($this->console);
@@ -286,6 +258,8 @@ abstract class Daemon extends Process {
 
         // launch daemon
         $worker->instance->spinup();
+
+        register_shutdown_function(array($worker->instance, 'spindown'));
 
         while ($this->loopactive) {
 
@@ -317,7 +291,7 @@ abstract class Daemon extends Process {
 
         }
 
-        $worker->instance->spindown();
+        // $worker->instance->spindown();
 
         $this->end(0);
 

@@ -159,7 +159,7 @@ abstract class Process extends DataModel {
     /**
      * @param integer $return_code
      */
-    protected function end($return_code) {
+    public function end($return_code) {
 
         exit($return_code);
 
