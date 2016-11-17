@@ -39,11 +39,7 @@ abstract class Process extends DataModel {
      * @property LoggerInterface $logger
      * @property int $pid
      */
-    public function __construct(
-        $niceness = null,
-        LoggerInterface $logger = null,
-        EventsManager $events = null
-    ){
+    public function __construct($niceness = null, LoggerInterface $logger = null, EventsManager $events = null){
 
         if ( !Checks::cli() ) {
             throw new RuntimeException("Process can run only in cli SAPI");
@@ -70,6 +66,10 @@ abstract class Process extends DataModel {
 
     /**
      * Register signals
+     * 
+     * Signals should be catched by ticks or ad-hoc loop. Each POSIX
+     * event will be exported as PosixEvent; SIGTERM and SIGINT will
+     * stop the process.
      *
      */
     protected function registerSignals() {
@@ -104,7 +104,7 @@ abstract class Process extends DataModel {
     /**
      * The sigTerm handler.
      *
-     * It kills everything and then exit with status 1
+     * It kills everything and then exit with status 0
      */
     public function sigIntHandler($signal) {
 
@@ -142,7 +142,7 @@ abstract class Process extends DataModel {
     /**
      * The generig signal handler.
      *
-     * It can be used to handle custom signals
+     * It can be used to catch custom signals using events
      */
     public function genericSignalHandler($signal) {
 

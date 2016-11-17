@@ -44,6 +44,17 @@ abstract class Daemon extends Process {
         'description' => 'Comodojo Daemon'
     );
 
+    /**
+     * Daemon constructor
+     *
+     * @param array $properties
+     * @param LoggerInterface $logger;
+     * @param EventsManager $events;
+     *
+     * @property EventsManager $events
+     * @property LoggerInterface $logger
+     * @property int $pid
+     */
     public function __construct($properties = [], LoggerInterface $logger = null, EventsManager $events = null){
 
         if ( !Checks::multithread() ) {
@@ -77,20 +88,23 @@ abstract class Daemon extends Process {
 
     }
 
+    /**
+     * Setup method; it allows to inject code BEFORE the daemon spinup 
+     *
+     */
     abstract public function setup();
 
+    /**
+     * Parse console arguments and init the daemon
+     *
+     */
     public function init() {
 
         $args = $this->console->arguments;
 
         $args->parse();
 
-        if ( $args->defined('help') ) {
-
-            $this->console->pad()->green()->usage();
-            $this->end(0);
-
-        } else if ( $args->defined('daemon') ) {
+        if ( $args->defined('daemon') ) {
 
             $this->daemonize();
 
@@ -104,7 +118,7 @@ abstract class Daemon extends Process {
 
         } else {
 
-            $this->console->usage();
+            $this->console->pad()->green()->usage();
             $this->end(0);
 
         }
