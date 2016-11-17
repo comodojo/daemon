@@ -66,7 +66,7 @@ abstract class Process extends DataModel {
 
     /**
      * Register signals
-     * 
+     *
      * Signals should be catched by ticks or ad-hoc loop. Each POSIX
      * event will be exported as PosixEvent; SIGTERM and SIGINT will
      * stop the process.
@@ -86,9 +86,7 @@ abstract class Process extends DataModel {
         if ( defined('SIGSTKFLT') ) $pluggable_signals[] = SIGSTKFLT;
 
         // register supported signals
-
         pcntl_signal(SIGTERM, array($this, 'sigTermHandler'));
-
         pcntl_signal(SIGINT, array($this, 'sigIntHandler'));
 
         // register pluggable signals

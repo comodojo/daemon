@@ -39,7 +39,7 @@ class Commands {
 
     }
 
-    public function list() {
+    public function getList() {
 
         return array_keys($this->commands);
 

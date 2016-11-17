@@ -51,9 +51,11 @@ class Server extends AbstractSocket {
 
     public function connect() {
 
-        $this->socket = stream_socket_server($this->handler, $errno, $errorMessage);
+        $this->socket = @stream_socket_server($this->handler, $errno, $errorMessage);
 
-        register_shutdown_function(array($this, 'close'));
+        if ( $this->socket === false ) throw new SocketException("Socket unavailable");
+
+        //register_shutdown_function(array($this, 'close'));
 
         return $this;
 
@@ -63,9 +65,7 @@ class Server extends AbstractSocket {
 
         stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
 
-        list($handler, $resource) = preg_split( '@(:\/\/)@', $this->handler );
-
-        if ( $handler == 'unix' /* && file_exists($resource) */ ) unlink($resource);
+        $this->clean();
 
     }
 
@@ -103,6 +103,14 @@ class Server extends AbstractSocket {
         $this->active = false;
 
         // $this->close();
+
+    }
+
+    public function clean() {
+
+        list($handler, $resource) = preg_split( '@(:\/\/)@', $this->handler );
+
+        if ( $handler == 'unix' && file_exists($resource) ) unlink($resource);
 
     }
 

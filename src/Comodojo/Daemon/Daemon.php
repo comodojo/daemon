@@ -84,12 +84,13 @@ abstract class Daemon extends Process {
         // init the console
         $this->console = new CLImate();
         $this->console->description($properties->description);
-        $this->console->arguments->add( $properties->arguments::create()->export() );
+        $args = new $properties->arguments;
+        $this->console->arguments->add( $args::create()->export() );
 
     }
 
     /**
-     * Setup method; it allows to inject code BEFORE the daemon spinup 
+     * Setup method; it allows to inject code BEFORE the daemon spinup
      *
      */
     abstract public function setup();
@@ -103,6 +104,12 @@ abstract class Daemon extends Process {
         $args = $this->console->arguments;
 
         $args->parse();
+
+        if ( $args->defined('hardstart') ) {
+
+            $this->hardstart();
+
+        }
 
         if ( $args->defined('daemon') ) {
 
@@ -125,27 +132,34 @@ abstract class Daemon extends Process {
 
     }
 
+    /**
+     * Start as a daemon, forking main process and detaching it from terminal
+     *
+     */
     public function daemonize() {
 
         // fork script
         $pid = $this->fork();
 
-        // detach from current termina (if any)
+        // detach from current terminal (if any)
         $this->detach();
 
         // update pid reference (we have a new daemon)
         $this->pid = $pid;
 
-        // autostart daemon
+        // start process daemon
         $this->start();
 
     }
 
+    /**
+     * Start the process, creating socket and spinning up workers (if any)
+     *
+     */
     public function start() {
 
         foreach ($this->workers as $name => $worker) {
 
-            // $this->workers->setPid($name, $this->launch($worker));
             $this->workers->setPid($name, $this->workers->start($name));
 
         }
@@ -164,8 +178,11 @@ abstract class Daemon extends Process {
 
         }
 
-        // if ( $this->supervisor ) $this->end(0);
-        $this->end(0);
+        if ( $this->supervisor ) {
+            $this->stop();
+            $this->end(0);
+        }
+        //$this->end(0);
 
     }
 
@@ -183,16 +200,35 @@ abstract class Daemon extends Process {
 
     private function becomeSupervisor() {
 
-        // set supervisor flag
-        // $this->supervisor = true;
+        $this->logger->notice("Initing supervisor subsystem");
+
+        $this->supervisor = true;
 
         // lock current PID
         $this->pidlock->lock($this->pid);
 
-        // connect socket
-        $this->socket->connect();
+        try {
+
+            // connect socket
+            $this->socket->connect();
+
+        } catch (SocketException $e) {
+
+            $this->logger->error("Supervisor error: ".$e->getMessage());
+            $this->logger->notice("Shutting down process and childs");
+
+            $this->stop();
+            $this->end(1);
+
+        }
+
+        // Subscribe term events that could be catched
+        $this->events->subscribe('daemon.posix.SIGTERM', '\Comodojo\Daemon\Listeners\StopDaemon');
+        $this->events->subscribe('daemon.posix.TERM', '\Comodojo\Daemon\Listeners\StopDaemon');
+        $this->events->subscribe('daemon.posix.SIGINT', '\Comodojo\Daemon\Listeners\StopDaemon');
 
         // subscribe the WorkerWatchdog (if workers > 0)
+        // TODO: this should be better coded as event catcher on SIGCHLD
         if ( count($this->workers) > 0 ) {
             $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
         }
@@ -233,82 +269,10 @@ abstract class Daemon extends Process {
 
     }
 
-    private function launch(Worker $worker) {
+    private function hardstart() {
 
-        $name = $worker->instance->getName();
-
-        // fork worker
-        $pid = pcntl_fork();
-
-        if ( $pid == -1 ) {
-            $this->logger->error("Could not create worker $name (fork error)");
-            $this->end(1);
-        }
-
-        if ( $pid ) {
-            $this->logger->info("Worker $name created with pid $pid");
-            return $pid;
-        }
-
-        // declare ticks
-        declare(ticks=5);
-
-        // unset supervisor components
-        unset($this->pidlock);
-        unset($this->socket);
-        unset($this->workers);
-        unset($this->console);
-
-        // set worker components
-        $this->loopcount = 0;
-        $this->loopactive = true;
-        $this->loopelapsed = 0;
-
-        // update pid reference
-        $this->pid = ProcessTools::getPid();
-
-        // install signals
-        $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
-
-        // launch daemon
-        $worker->instance->spinup();
-
-        register_shutdown_function(array($worker->instance, 'spindown'));
-
-        while ($this->loopactive) {
-
-            $start = microtime(true);
-
-            // pcntl_signal_dispatch();
-
-            // $this->events->emit( new DaemonEvent('preloop', $this) );
-
-            // if ( $this->runlock->check() && $this->loopactive) {
-
-                // $this->events->emit( new DaemonEvent('loopstart', $this) );
-
-                $worker->instance->loop();
-
-                // $this->events->emit( new DaemonEvent('loopstop', $this) );
-
-                $this->loopcount++;
-
-            // }
-
-            // $this->events->emit( new DaemonEvent('postloop', $this) );
-
-            $this->loopelapsed = (microtime(true) - $start);
-
-            $lefttime = $worker->looptime - $this->loopelapsed;
-
-            if ( $lefttime > 0 ) usleep($lefttime * 1000000);
-
-        }
-
-        // $worker->instance->spindown();
-
-        $this->end(0);
+        $this->pidlock->release();
+        $this->socket->clean();
 
     }
-
 }

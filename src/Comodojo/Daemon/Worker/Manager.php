@@ -115,11 +115,14 @@ use \Countable;
             return $pid;
         }
 
-        // declare ticks
-        declare(ticks=5);
-
         // remove supervisor flag
-        // $daemon->supervisor = false;
+        $daemon->supervisor = false;
+
+        // Unsubscribe supervisor default events (if any)
+        $daemon->events->removeAllListeners('daemon.posix.SIGTERM');
+        $daemon->events->removeAllListeners('daemon.posix.TERM');
+        $daemon->events->removeAllListeners('daemon.posix.SIGINT');
+        $daemon->events->removeAllListeners('daemon.socket.loop');
 
         // unset supervisor components
         unset($daemon->pidlock);
@@ -137,6 +140,9 @@ use \Countable;
 
         // install signals
         $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
+
+        // declare ticks
+        declare(ticks=5);
 
         // launch daemon
         $worker->instance->spinup();

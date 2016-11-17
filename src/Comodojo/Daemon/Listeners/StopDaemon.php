@@ -9,6 +9,8 @@ class StopDaemon extends AbstractListener {
 
         $daemon = $event->getProcess();
 
+        $daemon->logger->info('TERM or INT signal received, stopping daemon gracefully');
+
         $daemon->stop();
 
     }
