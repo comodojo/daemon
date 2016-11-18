@@ -174,7 +174,7 @@ abstract class Daemon extends Process {
 
         } catch (SocketException $e) {
 
-            $this->stop();
+            if ( $this->supervisor ) $this->stop();
 
         }
 
@@ -182,6 +182,7 @@ abstract class Daemon extends Process {
             $this->stop();
             $this->end(0);
         }
+
         //$this->end(0);
 
     }
@@ -223,9 +224,8 @@ abstract class Daemon extends Process {
         }
 
         // Subscribe term events that could be catched
-        $this->events->subscribe('daemon.posix.SIGTERM', '\Comodojo\Daemon\Listeners\StopDaemon');
-        $this->events->subscribe('daemon.posix.TERM', '\Comodojo\Daemon\Listeners\StopDaemon');
-        $this->events->subscribe('daemon.posix.SIGINT', '\Comodojo\Daemon\Listeners\StopDaemon');
+        $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopDaemon');
+        $this->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopDaemon');
 
         // subscribe the WorkerWatchdog (if workers > 0)
         // TODO: this should be better coded as event catcher on SIGCHLD

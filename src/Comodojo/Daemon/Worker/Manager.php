@@ -99,9 +99,6 @@ use \Countable;
 
     public function start($name) {
 
-        $worker = $this->get($name);
-        $daemon = $this->daemon;
-
         // fork worker
         $pid = pcntl_fork();
 
@@ -115,13 +112,19 @@ use \Countable;
             return $pid;
         }
 
+        $worker = $this->get($name);
+        $daemon = $this->daemon;
+
+        // TODO: inject logger and events directly from daemon (not in worker constructor)
+        $daemon->logger = $daemon->logger->withName('worker');
+        $worker->instance->logger = $daemon->logger;
+
         // remove supervisor flag
         $daemon->supervisor = false;
 
         // Unsubscribe supervisor default events (if any)
-        $daemon->events->removeAllListeners('daemon.posix.SIGTERM');
-        $daemon->events->removeAllListeners('daemon.posix.TERM');
-        $daemon->events->removeAllListeners('daemon.posix.SIGINT');
+        $daemon->events->removeAllListeners('daemon.posix.'.SIGTERM);
+        $daemon->events->removeAllListeners('daemon.posix.'.SIGINT);
         $daemon->events->removeAllListeners('daemon.socket.loop');
 
         // unset supervisor components

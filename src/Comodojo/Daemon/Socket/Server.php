@@ -14,6 +14,8 @@ class Server extends AbstractSocket {
 
     private $active;
 
+    // private $looping;
+
     private $process;
 
     private $timeout;
@@ -102,7 +104,9 @@ class Server extends AbstractSocket {
 
         $this->active = false;
 
-        // $this->close();
+        // while ($this->looping) continue;
+
+        $this->close();
 
     }
 
@@ -117,6 +121,8 @@ class Server extends AbstractSocket {
     protected function loop() {
 
         $clients = [];
+
+        // $this->looping = true;
 
         while($this->active) {
 
@@ -168,6 +174,8 @@ class Server extends AbstractSocket {
             }
 
         }
+
+        // $this->looping = false;
 
     }
 
