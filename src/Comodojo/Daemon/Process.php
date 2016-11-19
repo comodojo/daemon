@@ -112,7 +112,7 @@ abstract class Process extends DataModel {
 
             $this->events->emit( new PosixEvent($signal, $this) );
 
-            $this->end(0);
+            // $this->end(0);
 
         }
 
@@ -131,7 +131,7 @@ abstract class Process extends DataModel {
 
             $this->events->emit( new PosixEvent($signal, $this) );
 
-            $this->end(1);
+            // $this->end(1);
 
         }
 

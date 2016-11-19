@@ -28,13 +28,9 @@ abstract class AbstractWorker implements WorkerInterface {
 
     public $events;
 
-    public function __construct(LoggerInterface $logger, EventsManager $events) {
+    public function __construct() {
 
-        $this->name = is_null($this->name) ? uniqid('daemon.worker.') : $this->name;
-
-        $this->logger = $logger;
-
-        $this->events = $events;
+        $this->name = is_null($this->name) ? uniqid('worker.') : $this->name;
 
     }
 

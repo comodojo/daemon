@@ -158,15 +158,18 @@ abstract class Daemon extends Process {
      */
     public function start() {
 
+        // we're activating!
+        $this->active = true;
+
+        $this->becomeSupervisor();
+
+        $this->setup();
+
         foreach ($this->workers as $name => $worker) {
 
             $this->workers->setPid($name, $this->workers->start($name));
 
         }
-
-        $this->becomeSupervisor();
-
-        $this->setup();
 
         try {
 
@@ -174,16 +177,15 @@ abstract class Daemon extends Process {
 
         } catch (SocketException $e) {
 
-            if ( $this->supervisor ) $this->stop();
+            $this->stop();
+            $this->end(0);
 
         }
 
-        if ( $this->supervisor ) {
+        if ( $this->supervisor && $this->active ) {
             $this->stop();
             $this->end(0);
         }
-
-        //$this->end(0);
 
     }
 
@@ -191,11 +193,15 @@ abstract class Daemon extends Process {
 
         $this->logger->notice("Stopping daemon...");
 
-        $this->workers->stop();
-
         $this->socket->stop();
 
+        $this->socket->close();
+
+        $this->workers->stop();
+
         $this->pidlock->release();
+
+        $this->active = false;
 
     }
 
@@ -230,7 +236,8 @@ abstract class Daemon extends Process {
         // subscribe the WorkerWatchdog (if workers > 0)
         // TODO: this should be better coded as event catcher on SIGCHLD
         if ( count($this->workers) > 0 ) {
-            $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
+            // $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
+            $this->events->subscribe('daemon.posix.'.SIGCHLD, '\Comodojo\Daemon\Listeners\WorkerWatchdog');
         }
 
     }
@@ -275,4 +282,5 @@ abstract class Daemon extends Process {
         $this->socket->clean();
 
     }
+
 }

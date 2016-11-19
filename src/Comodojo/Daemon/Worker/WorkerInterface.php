@@ -21,8 +21,6 @@ use \Psr\Log\LoggerInterface;
 
 interface WorkerInterface {
 
-    public function __construct(LoggerInterface $logger, EventsManager $events);
-
     public function getName();
 
     public function spinup();

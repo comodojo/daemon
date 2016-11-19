@@ -106,7 +106,7 @@ class Server extends AbstractSocket {
 
         // while ($this->looping) continue;
 
-        $this->close();
+        // $this->close();
 
     }
 
@@ -132,7 +132,14 @@ class Server extends AbstractSocket {
             $sockets[] = $this->socket;
 
             if( @stream_select($sockets, $write, $except, $this->timeout) === false ) {
+                if ( $this->checkSocketError() && $this->active ) {
+                    $this->logger->debug("Socket reset due to incoming signal");
+                    pcntl_signal_dispatch();
+                    continue;
+                }
+
                 throw new SocketException("Error selecting sockets");
+
             }
 
             // Accept new connections (if any)
@@ -266,6 +273,15 @@ class Server extends AbstractSocket {
         fclose($client);
 
         $this->events->emit( new SocketEvent('client.hangup', $this->process) );
+
+    }
+
+    private function checkSocketError() {
+
+        // this method is taken as-is from symphony ProcessPipes
+        $lastError = error_get_last();
+        // stream_select returns false when the `select` system call is interrupted by an incoming signal
+        return isset($lastError['message']) && false !== stripos($lastError['message'], 'interrupted system call');
 
     }
 

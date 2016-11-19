@@ -115,9 +115,15 @@ use \Countable;
         $worker = $this->get($name);
         $daemon = $this->daemon;
 
-        // TODO: inject logger and events directly from daemon (not in worker constructor)
-        $daemon->logger = $daemon->logger->withName('worker');
+        // declare ticks to handle few signals that will arrive at worker
+        declare(ticks=5);
+
+        // inject events and logger
+        $daemon->logger = $daemon->logger->withName($name);
         $worker->instance->logger = $daemon->logger;
+        $worker->events = $daemon->events;
+
+        // $daemon->registerSignals();
 
         // remove supervisor flag
         $daemon->supervisor = false;
@@ -142,15 +148,16 @@ use \Countable;
         $daemon->pid = ProcessTools::getPid();
 
         // install signals
-        $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
+        $daemon->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
+        $daemon->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopWorker');
 
         // declare ticks
-        declare(ticks=5);
+        // declare(ticks=5);
 
         // launch daemon
         $worker->instance->spinup();
 
-        register_shutdown_function(array($worker->instance, 'spindown'));
+        // register_shutdown_function(array($worker->instance, 'spindown'));
 
         while ($daemon->loopactive) {
 
@@ -182,7 +189,7 @@ use \Countable;
 
         }
 
-        // $worker->instance->spindown();
+        $worker->instance->spindown();
 
         $daemon->end(0);
 
@@ -195,7 +202,7 @@ use \Countable;
             foreach ($this->data as $worker) {
 
                 // posix_kill($worker->pid, SIGTERM);
-                ProcessTools::term($worker->pid, 5, SIGINT);
+                ProcessTools::term($worker->pid, 5, SIGTERM);
 
             }
 

@@ -8,6 +8,8 @@ class Worker extends AbstractWorker {
 
         $this->logger->info("Worker ".$this->getName()." spinning up...");
 
+        /// $this->events->subscribe('daemon.posix.'.SIGUSR1, '\Comodojo\Daemon\Tests\Mock\Listeners\ReactOnSignal');
+
     }
 
     public function loop() {
