@@ -1,8 +1,5 @@
 <?php namespace Comodojo\Daemon\Worker;
 
-use \Psr\Log\LoggerInterface;
-use \Exception;
-
 /**
  * @package     Comodojo Daemon
  * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
@@ -19,40 +16,46 @@ use \Exception;
  * THE SOFTWARE.
  */
 
-abstract class AbstractWorker implements WorkerInterface {
+class SharedMemory {
 
-    private $name;
+    private $key;
 
-    private $id;
+    public function __construct($id) {
 
-    public $logger;
-
-    public $events;
-
-    public function __construct() {
-
-        $this->id = uniqid();
-
-        $this->name = is_null($this->name) ? 'worker.'.$this->id : $this->name;
+        $this->key = shmop_open($id, "c", 0644, 128);
 
     }
 
-    public function getName() {
+    public function getKey() {
 
-        return $this->name;
-
-    }
-
-    public function getId() {
-
-        return $this->id;
+        return $this->key;
 
     }
 
-    abstract public function spinup();
+    public function send($signal) {
 
-    abstract public function loop();
+        return shmop_write($this->key, $signal, 0);
 
-    abstract public function spindown();
+    }
+
+    public function read() {
+
+        return trim(shmop_read($this->key, 0, 128));
+
+    }
+
+    public function delete() {
+
+        return shmop_write($this->key, str_pad('',128), 0);
+
+    }
+
+    public function close() {
+
+        shmop_delete($this->key);
+
+        return shmop_close($this->key);
+
+    }
 
 }

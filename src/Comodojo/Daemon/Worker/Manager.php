@@ -2,6 +2,7 @@
 
 use \Comodojo\Daemon\Daemon;
 use \Comodojo\Daemon\Utils\ProcessTools;
+use \Comodojo\Daemon\Events\WorkerEvent;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\DataAccess\IteratorTrait;
 use \Comodojo\Foundation\DataAccess\CountableTrait;
@@ -60,6 +61,7 @@ use \Countable;
         $w->instance = $worker;
         $w->looptime = $looptime;
         $w->forever = $forever;
+        $w->shared = new SharedMemory(hexdec($worker->getId()));
 
         $this->data[$name] = $w;
 
@@ -112,21 +114,21 @@ use \Countable;
             return $pid;
         }
 
-        $worker = $this->get($name);
-        $daemon = $this->daemon;
-
         // declare ticks to handle few signals that will arrive at worker
         declare(ticks=5);
 
-        // inject events and logger
-        $daemon->logger = $daemon->logger->withName($name);
-        $worker->instance->logger = $daemon->logger;
-        $worker->events = $daemon->events;
-
-        // $daemon->registerSignals();
+        $worker = $this->get($name);
+        $daemon = $this->daemon;
 
         // remove supervisor flag
         $daemon->supervisor = false;
+
+        // inject events and logger
+        $daemon->logger = $daemon->logger->withName($name);
+        // $daemon->events = new EventsManager($daemon->logger);
+        $worker->instance->logger = $daemon->logger;
+        // $worker->instance->events = $daemon->events;
+        $worker->instance->events = new EventsManager($worker->instance->logger);
 
         // Unsubscribe supervisor default events (if any)
         $daemon->events->removeAllListeners('daemon.posix.'.SIGTERM);
@@ -150,36 +152,33 @@ use \Countable;
         // install signals
         $daemon->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
         $daemon->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopWorker');
-
-        // declare ticks
-        // declare(ticks=5);
+        // $worker->instance->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
+        // $worker->instance->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopWorker');
 
         // launch daemon
         $worker->instance->spinup();
 
-        // register_shutdown_function(array($worker->instance, 'spindown'));
-
+        // start looping
         while ($daemon->loopactive) {
+
+            $signal = $worker->shared->read();
+            if ( !empty($signal) ) {
+                // $daemon->events->emit( new WorkerEvent($signal, $daemon, $worker->instance) );
+                $worker->instance->events->emit( new WorkerEvent($signal, $daemon, $worker->instance) );
+                $worker->shared->delete();
+            }
 
             $start = microtime(true);
 
-            // pcntl_signal_dispatch();
+            // $daemon->events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
+            $worker->instance->events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
 
-            // $this->events->emit( new DaemonEvent('preloop', $this) );
+            $worker->instance->loop();
 
-            // if ( $this->runlock->check() && $this->loopactive) {
+            // $daemon->events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
+            $worker->instance->events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
 
-                // $this->events->emit( new DaemonEvent('loopstart', $this) );
-
-                $worker->instance->loop();
-
-                // $this->events->emit( new DaemonEvent('loopstop', $this) );
-
-                $daemon->loopcount++;
-
-            // }
-
-            // $this->events->emit( new DaemonEvent('postloop', $this) );
+            $daemon->loopcount++;
 
             $daemon->loopelapsed = (microtime(true) - $start);
 
@@ -195,19 +194,19 @@ use \Countable;
 
     }
 
-    public function stop($pid = null) {
+    public function stop($name = null) {
 
-        if ( empty($pid) ) {
+        foreach ($this->data as $wname => $worker) {
 
-            foreach ($this->data as $worker) {
+            if ( is_null($name) || $name == $wname ) {
 
-                // posix_kill($worker->pid, SIGTERM);
+                // close the shared memory block
+                $worker->shared->close();
+
+                // terminate the worker
                 ProcessTools::term($worker->pid, 5, SIGTERM);
 
             }
-
-        } else {
-
 
         }
 

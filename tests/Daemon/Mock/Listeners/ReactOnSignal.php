@@ -9,7 +9,7 @@ class ReactOnSignal extends AbstractListener {
 
         $daemon = $event->getProcess();
 
-        $daemon->logger->info("Hey, someone sends me a signal!!!");
+        $daemon->logger->info("Hey, someone sends me a signal: ".$event->getName());
 
     }
 

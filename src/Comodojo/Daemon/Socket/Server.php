@@ -132,6 +132,7 @@ class Server extends AbstractSocket {
             $sockets[] = $this->socket;
 
             if( @stream_select($sockets, $write, $except, $this->timeout) === false ) {
+
                 if ( $this->checkSocketError() && $this->active ) {
                     $this->logger->debug("Socket reset due to incoming signal");
                     pcntl_signal_dispatch();

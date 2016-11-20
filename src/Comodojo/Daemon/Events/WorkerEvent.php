@@ -1,7 +1,8 @@
-<?php namespace Comodojo\Daemon\Worker;
+<?php namespace Comodojo\Daemon\Events;
 
-use \Psr\Log\LoggerInterface;
-use \Exception;
+use \Comodojo\Daemon\Process;
+use \Comodojo\Daemon\Worker\WorkerInterface;
+use \Comodojo\Foundation\Events\AbstractEvent;
 
 /**
  * @package     Comodojo Daemon
@@ -19,40 +20,32 @@ use \Exception;
  * THE SOFTWARE.
  */
 
-abstract class AbstractWorker implements WorkerInterface {
+class WorkerEvent extends AbstractEvent {
 
-    private $name;
+    private $process;
 
-    private $id;
+    private $worker;
 
-    public $logger;
+    public function __construct($signal, Process $process, WorkerInterface $worker) {
 
-    public $events;
+        parent::__construct("daemon.worker.$signal");
 
-    public function __construct() {
+        $this->process = $process;
 
-        $this->id = uniqid();
-
-        $this->name = is_null($this->name) ? 'worker.'.$this->id : $this->name;
+        $this->worker = $worker;
 
     }
 
-    public function getName() {
+    public function getProcess() {
 
-        return $this->name;
-
-    }
-
-    public function getId() {
-
-        return $this->id;
+        return $this->process;
 
     }
 
-    abstract public function spinup();
+    public function getWorker() {
 
-    abstract public function loop();
+        return $this->worker;
 
-    abstract public function spindown();
+    }
 
 }

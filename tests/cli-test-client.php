@@ -10,4 +10,6 @@ $data = $client->send('echo', "this is a test message");
 
 echo "\n\n >> $data << \n\n";
 
+$data = $client->send('reload', "");
+
 $client->close();

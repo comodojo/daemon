@@ -28,6 +28,12 @@ class Daemon extends AbstractDaemon {
             return "Closing daemon";
         });
 
+        $this->socket->commands->add('reload', function ($data, $daemon) {
+            $workers = $daemon->workers->get();
+            $worker = $workers[array_rand($workers)];
+            $worker->shared->send('reload');
+        });
+
     }
 
 }
