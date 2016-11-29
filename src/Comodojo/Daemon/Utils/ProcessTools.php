@@ -34,6 +34,7 @@ class ProcessTools {
         while ( time() < $kill_time ) {
 
             if ( !self::isRunning($pid) ) return $term;
+            usleep(20000);
 
         }
 

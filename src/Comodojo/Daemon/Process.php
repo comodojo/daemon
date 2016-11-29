@@ -3,6 +3,7 @@
 use \Comodojo\Daemon\Events\PosixEvent;
 use \Comodojo\Daemon\Utils\ProcessTools;
 use \Comodojo\Daemon\Utils\Checks;
+use \Comodojo\Daemon\Utils\PosixSignals;
 use \Comodojo\Foundation\DataAccess\Model as DataModel;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\Logging\Manager as LogManager;
@@ -60,80 +61,8 @@ abstract class Process extends DataModel {
         }
 
         // register signals
-        $this->registerSignals();
-
-    }
-
-    /**
-     * Register signals
-     *
-     * Signals should be catched by ticks or ad-hoc loop. Each POSIX
-     * event will be exported as PosixEvent; SIGTERM and SIGINT will
-     * stop the process.
-     *
-     */
-    protected function registerSignals() {
-
-        $pluggable_signals = array(
-            SIGHUP, SIGCHLD, SIGUSR1, SIGUSR2, SIGILL, SIGTRAP, SIGABRT, SIGIOT,
-            SIGBUS, SIGFPE, SIGSEGV, SIGPIPE, SIGALRM, SIGTTIN, SIGTTOU, SIGURG,
-            SIGXCPU, SIGXFSZ, SIGVTALRM, SIGPROF, SIGWINCH, SIGIO, SIGSYS, SIGBABY,
-            SIGTSTP, SIGCONT
-        );
-
-        if ( defined('SIGPOLL') )   $pluggable_signals[] = SIGPOLL;
-        if ( defined('SIGPWR') )    $pluggable_signals[] = SIGPWR;
-        if ( defined('SIGSTKFLT') ) $pluggable_signals[] = SIGSTKFLT;
-
-        // register supported signals
-        pcntl_signal(SIGTERM, array($this, 'sigTermHandler'));
-        pcntl_signal(SIGINT, array($this, 'sigIntHandler'));
-
-        // register pluggable signals
-
-        foreach ( $pluggable_signals as $signal ) {
-
-            pcntl_signal($signal, array($this, 'genericSignalHandler'));
-
-        }
-
-    }
-
-    /**
-     * The sigTerm handler.
-     *
-     * It kills everything and then exit with status 0
-     */
-    public function sigIntHandler($signal) {
-
-        if ( $this->pid == ProcessTools::getPid() ) {
-
-            $this->logger->info("Received TERM signal, shutting down process gracefully");
-
-            $this->events->emit( new PosixEvent($signal, $this) );
-
-            // $this->end(0);
-
-        }
-
-    }
-
-    /**
-     * The sigTerm handler.
-     *
-     * It kills everything and then exit with status 1
-     */
-    public function sigTermHandler($signal) {
-
-        if ( $this->pid == ProcessTools::getPid() ) {
-
-            $this->logger->info("Received TERM signal, shutting down process");
-
-            $this->events->emit( new PosixEvent($signal, $this) );
-
-            // $this->end(1);
-
-        }
+        $this->signals = new PosixSignals();
+        $this->signals->any()->call(array($this, 'signalToEvent'));
 
     }
 
@@ -142,13 +71,16 @@ abstract class Process extends DataModel {
      *
      * It can be used to catch custom signals using events
      */
-    public function genericSignalHandler($signal) {
+    public function signalToEvent($signal) {
 
         if ( $this->pid == ProcessTools::getPid() ) {
 
-            $this->logger->info("Received $signal signal, firing associated event(s)");
+            $signame = $this->signals->signame($signal);
+
+            $this->logger->info("Received $signame ($signal) signal, firing associated event(s)");
 
             $this->events->emit( new PosixEvent($signal, $this) );
+            $this->events->emit( new PosixEvent($signame, $this) );
 
         }
 
@@ -160,14 +92,6 @@ abstract class Process extends DataModel {
     public function end($return_code) {
 
         exit($return_code);
-
-        // if ( $this->configuration->get('is-test') === true ) {
-        //
-        //     if ( $return_code === 1 ) throw new Exception("Test Exception");
-        //
-        //     else return $return_code;
-        //
-        // }
 
     }
 

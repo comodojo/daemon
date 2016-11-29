@@ -161,27 +161,30 @@ abstract class Daemon extends Process {
         // we're activating!
         $this->active = true;
 
+        foreach ($this->workers as $name => $worker) {
+
+            $this->workers->start($name);
+
+        }
+
         $this->becomeSupervisor();
 
         $this->setup();
 
-        foreach ($this->workers as $name => $worker) {
-
-            $this->workers->setPid($name, $this->workers->start($name));
-
-        }
-
+        // start listening on socket
         try {
 
             $this->socket->listen();
 
         } catch (SocketException $e) {
 
+            // something did wrong on socket...
             $this->stop();
             $this->end(0);
 
         }
 
+        // loop closed; if I'm the supervisor, I should clean everything
         if ( $this->supervisor && $this->active ) {
             $this->stop();
             $this->end(0);
@@ -192,6 +195,8 @@ abstract class Daemon extends Process {
     public function stop() {
 
         $this->logger->notice("Stopping daemon...");
+
+        $this->events->removeAllListeners('daemon.posix.'.SIGCHLD);
 
         $this->socket->stop();
 
@@ -233,8 +238,6 @@ abstract class Daemon extends Process {
         $this->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopDaemon');
         $this->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopDaemon');
 
-        // subscribe the WorkerWatchdog (if workers > 0)
-        // TODO: this should be better coded as event catcher on SIGCHLD
         if ( count($this->workers) > 0 ) {
             // $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
             $this->events->subscribe('daemon.posix.'.SIGCHLD, '\Comodojo\Daemon\Listeners\WorkerWatchdog');

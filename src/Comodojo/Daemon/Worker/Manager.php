@@ -99,7 +99,7 @@ use \Countable;
 
     }
 
-    public function start($name) {
+    public function start($name, $unmask = false) {
 
         // fork worker
         $pid = pcntl_fork();
@@ -111,35 +111,36 @@ use \Countable;
 
         if ( $pid ) {
             $this->logger->info("Worker $name created with pid $pid");
-            return $pid;
+            $this->setPid($name, $pid);
+            return;
         }
 
-        // declare ticks to handle few signals that will arrive at worker
-        declare(ticks=5);
-
+        // get daemon and worker
         $worker = $this->get($name);
         $daemon = $this->daemon;
 
-        // remove supervisor flag
-        $daemon->supervisor = false;
+        // cleanup events
+        $daemon->signals->any()->reset();
+
+        // unmask signals (if restart)
+        if ( $unmask === true ) {
+            $daemon->signals->any()->unmask();
+        }
 
         // inject events and logger
-        $daemon->logger = $daemon->logger->withName($name);
-        // $daemon->events = new EventsManager($daemon->logger);
-        $worker->instance->logger = $daemon->logger;
-        // $worker->instance->events = $daemon->events;
-        $worker->instance->events = new EventsManager($worker->instance->logger);
+        $logger = $daemon->logger->withName($name);
+        $events = new EventsManager($logger);
+        $worker->instance->logger = $logger;
+        $worker->instance->events = $events;
 
-        // Unsubscribe supervisor default events (if any)
-        $daemon->events->removeAllListeners('daemon.posix.'.SIGTERM);
-        $daemon->events->removeAllListeners('daemon.posix.'.SIGINT);
-        $daemon->events->removeAllListeners('daemon.socket.loop');
+        $this->declassDaemon($daemon);
 
-        // unset supervisor components
-        unset($daemon->pidlock);
-        unset($daemon->socket);
-        unset($daemon->workers);
-        unset($daemon->console);
+        // declare ticks and ticker
+        declare(ticks=5);
+        register_tick_function([$this, 'ticker'], $worker);
+
+        // register internal listeners
+        $events->subscribe('daemon.worker.close', '\Comodojo\Daemon\Listeners\StopWorker');
 
         // set worker components
         $daemon->loopcount = 0;
@@ -149,38 +150,25 @@ use \Countable;
         // update pid reference
         $daemon->pid = ProcessTools::getPid();
 
-        // install signals
-        $daemon->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
-        $daemon->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopWorker');
-        // $worker->instance->events->subscribe('daemon.posix.'.SIGTERM, '\Comodojo\Daemon\Listeners\StopWorker');
-        // $worker->instance->events->subscribe('daemon.posix.'.SIGINT, '\Comodojo\Daemon\Listeners\StopWorker');
-
         // launch daemon
         $worker->instance->spinup();
 
         // start looping
         while ($daemon->loopactive) {
 
-            $signal = $worker->shared->read();
-            if ( !empty($signal) ) {
-                // $daemon->events->emit( new WorkerEvent($signal, $daemon, $worker->instance) );
-                $worker->instance->events->emit( new WorkerEvent($signal, $daemon, $worker->instance) );
-                $worker->shared->delete();
-            }
-
             $start = microtime(true);
 
             // $daemon->events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
-            $worker->instance->events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
+            $events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
 
             $worker->instance->loop();
-
-            // $daemon->events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
-            $worker->instance->events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
 
             $daemon->loopcount++;
 
             $daemon->loopelapsed = (microtime(true) - $start);
+
+            // $daemon->events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
+            $events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
 
             $lefttime = $worker->looptime - $daemon->loopelapsed;
 
@@ -200,11 +188,24 @@ use \Countable;
 
             if ( is_null($name) || $name == $wname ) {
 
+                // fix the wait time;
+                $time = time() + 5;
+
+                // try to gently ask the worker to close
+                $worker->shared->send('close');
+
+                while (time() < $time) {
+
+                    if ( !$this->running($worker->pid) ) break;
+                    usleep(20000);
+
+                }
+
                 // close the shared memory block
                 $worker->shared->close();
 
-                // terminate the worker
-                ProcessTools::term($worker->pid, 5, SIGTERM);
+                // terminate the worker if still alive
+                if ($this->running($worker->pid)) ProcessTools::term($worker->pid, 5, SIGTERM);
 
             }
 
@@ -215,6 +216,37 @@ use \Countable;
     public function running($pid) {
 
         return ProcessTools::isRunning($pid);
+
+    }
+
+    private function declassDaemon($daemon) {
+
+        // remove supervisor flag
+        $daemon->supervisor = false;
+
+        // remove supervisor flag
+        $daemon->supervisor = false;
+
+        // Unsubscribe supervisor default events (if any)
+        $daemon->events->removeAllListeners('daemon.posix.'.SIGTERM);
+        $daemon->events->removeAllListeners('daemon.posix.'.SIGINT);
+        $daemon->events->removeAllListeners('daemon.socket.loop');
+
+        // unset supervisor components
+        unset($daemon->pidlock);
+        unset($daemon->socket);
+        unset($daemon->workers);
+        unset($daemon->console);
+
+    }
+
+    public function ticker($worker) {
+
+        $signal = $worker->shared->read();
+        if ( !empty($signal) ) {
+            $worker->instance->events->emit( new WorkerEvent($signal, $this->daemon, $worker->instance) );
+            $worker->shared->delete();
+        }
 
     }
 

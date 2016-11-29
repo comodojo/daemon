@@ -23,8 +23,7 @@ class WorkerWatchdog extends AbstractListener {
 
                 if ($worker->forever) {
                     $daemon->logger->debug("Attempting to restart $name");
-                    // $workers->start($name);
-                    $workers->setPid($name, $workers->start($name));
+                    $workers->start($name, true);
                 }
 
             }

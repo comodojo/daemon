@@ -10,6 +10,8 @@ class Worker extends AbstractWorker {
 
         $this->events->subscribe('daemon.worker.reload', '\Comodojo\Daemon\Tests\Mock\Listeners\ReactOnSignal');
 
+        $this->events->subscribe('daemon.worker.loopstop', '\Comodojo\Daemon\Tests\Mock\Listeners\LoopStop');
+
     }
 
     public function loop() {

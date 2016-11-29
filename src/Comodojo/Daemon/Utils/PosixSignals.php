@@ -1,5 +1,12 @@
 <?php namespace Comodojo\Daemon\Utils;
 
+use \Comodojo\Foundation\DataAccess\IteratorTrait;
+use \Comodojo\Foundation\DataAccess\CountableTrait;
+use \Comodojo\Foundation\DataAccess\ArrayAccessTrait;
+use \Iterator;
+use \Countable;
+use \ArrayAccess;
+
 /**
  * @package     Comodojo Daemon
  * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
@@ -16,22 +23,35 @@
  * THE SOFTWARE.
  */
 
-class PosixSignals {
+class PosixSignals implements Iterator, Countable, ArrayAccess {
 
-    private $signals = [
+    use IteratorTrait;
+    use CountableTrait;
+    use ArrayAccessTrait;
+
+    protected $data = [
         SIGHUP => 'SIGHUP',
-        SIGCHLD => 'SIGCHLD',
-        SIGUSR1 => 'SIGUSR1',
-        SIGUSR2 => 'SIGUSR2',
+        SIGINT => 'SIGINT',
+        SIGQUIT => 'SIGQUIT',
         SIGILL => 'SIGILL',
         SIGTRAP => 'SIGTRAP',
         SIGABRT => 'SIGABRT',
         SIGIOT => 'SIGIOT',
         SIGBUS => 'SIGBUS',
         SIGFPE => 'SIGFPE',
+        // SIGKILL => 'SIGKILL',
+        SIGUSR1 => 'SIGUSR1',
         SIGSEGV => 'SIGSEGV',
+        SIGUSR2 => 'SIGUSR2',
         SIGPIPE => 'SIGPIPE',
         SIGALRM => 'SIGALRM',
+        SIGTERM => 'SIGTERM',
+        SIGSTKFLT => 'SIGSTKFLT',
+        SIGCLD => 'SIGCLD',
+        SIGCHLD => 'SIGCHLD',
+        SIGCONT => 'SIGCONT',
+        // SIGSTOP => 'SIGSTOP',
+        SIGTSTP => 'SIGTSTP',
         SIGTTIN => 'SIGTTIN',
         SIGTTOU => 'SIGTTOU',
         SIGURG => 'SIGURG',
@@ -40,41 +60,104 @@ class PosixSignals {
         SIGVTALRM => 'SIGVTALRM',
         SIGPROF => 'SIGPROF',
         SIGWINCH => 'SIGWINCH',
-        SIGIO => 'SIGIO',
+        SIGPOLL => 'SIGPOLL',
+        // SIGIO => 'SIGIO',
+        SIGPWR => 'SIGPWR',
         SIGSYS => 'SIGSYS',
-        SIGBABY => 'SIGBABY',
-        SIGTSTP => 'SIGTSTP',
-        SIGCONT => 'SIGCONT'
+        SIGBABY => 'SIGBABY'
     ];
 
-    public function __construct() {
+    protected $pointer;
 
-        if ( defined('SIGPOLL') ) $this->signal[SIGPOLL] = 'SIGPOLL';
-        if ( defined('SIGPWR') ) $this->signal[SIGPWR] = 'SIGPWR';
-        if ( defined('SIGSTKFLT') ) $this->signal[SIGSTKFLT] = 'SIGSTKFLT';
-        if ( defined('SIGTERM') ) $this->signal[SIGTERM] = 'SIGTERM';
-        if ( defined('SIGINT') ) $this->signal[SIGINT] = 'SIGINT';
-        if ( defined('SIGKILL') ) $this->signal[SIGKILL] = 'SIGKILL';
+    // public function __construct() {
+    //
+    //     if ( defined('SIGPOLL') ) $this->signal[SIGPOLL] = 'SIGPOLL';
+    //     if ( defined('SIGPWR') ) $this->signal[SIGPWR] = 'SIGPWR';
+    //     if ( defined('SIGSTKFLT') ) $this->signal[SIGSTKFLT] = 'SIGSTKFLT';
+    //     if ( defined('SIGTERM') ) $this->signal[SIGTERM] = 'SIGTERM';
+    //     if ( defined('SIGINT') ) $this->signal[SIGINT] = 'SIGINT';
+    //     if ( defined('SIGKILL') ) $this->signal[SIGKILL] = 'SIGKILL';
+    //
+    // }
 
-    }
+    public function sigNo($signame) {
 
-    public function getSignals() {
-
-        return $this->signals;
-
-    }
-
-    public function getSigNo($signame) {
-
-        $reverse_signals = array_flip($this->signals);
+        $reverse_signals = array_flip($this->data);
 
         return array_key_exists($signame, $reverse_signals) ? $reverse_signals[$signame] : null;
 
     }
 
-    public function getSigName($signo) {
+    public function sigName($signo) {
 
-        return array_key_exists($signo, $this->signals) ? $this->signals[$signo] : null;
+        return array_key_exists($signo, $this->data) ? $this->data[$signo] : null;
+
+    }
+
+    public function on($signal) {
+
+        if ( !isset($this[$signal]) ) throw new Exception("Signal $signal not supported");
+
+        $this->pointer = $signal;
+
+        return $this;
+
+    }
+
+    public function any() {
+
+        $this->pointer = null;
+
+        return $this;
+
+    }
+
+    public function call($callable) {
+
+        if ( $this->pointer === null ) {
+            $result = [];
+            foreach ($this as $signo => $signame) {
+                $result[] = $re = pcntl_signal($signo, $callable);
+                if (!$re) echo "\n>>>Signal $signo (".$this->sigName($signo).") failed\n";
+            }
+            return !in_array(false, $result);
+        }
+
+        return pcntl_signal($this->pointer, $callable);
+
+    }
+
+    public function reset() {
+
+        if ( $this->pointer === null ) {
+            $result = [];
+            foreach ($this as $signo => $signame) {
+                $result[] = pcntl_signal($signo, SIG_DFL);
+            }
+            return !in_array(false, $result);
+        }
+
+        return pcntl_signal($this->pointer, SIG_DFL);
+
+    }
+
+    public function mask() {
+
+        if ( $this->pointer === null ) {
+            return pcntl_sigprocmask(SIG_SETMASK, $this);
+        }
+
+        return pcntl_sigprocmask(SIG_BLOCK, $this->pointer);
+
+    }
+
+    public function unmask() {
+
+        if ( $this->pointer === null ) {
+            return pcntl_sigprocmask(SIG_SETMASK, []);
+        }
+
+        return pcntl_sigprocmask(SIG_UNBLOCK, $this->pointer);
 
     }
 
