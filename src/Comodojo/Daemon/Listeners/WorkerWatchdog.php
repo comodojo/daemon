@@ -24,6 +24,9 @@ class WorkerWatchdog extends AbstractListener {
                 if ($worker->forever) {
                     $daemon->logger->debug("Attempting to restart $name");
                     $workers->start($name, true);
+                } else {
+                    $daemon->logger->error("Worker $name has exited, shutting down daemon");
+                    $daemon->stop();
                 }
 
             }

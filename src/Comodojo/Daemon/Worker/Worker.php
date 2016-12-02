@@ -25,7 +25,10 @@ class Worker extends DataModel {
     protected $data = array(
         'pid' => null,
         'instance' => null,
-        'looptime' => 1
+        'looptime' => 1,
+        'forever' => false,
+        'input' => null,
+        'output' => null
     );
 
 }

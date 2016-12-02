@@ -29,6 +29,8 @@ abstract class AbstractWorker implements WorkerInterface {
 
     public $events;
 
+    public $signals;
+
     public function __construct() {
 
         $this->id = uniqid();

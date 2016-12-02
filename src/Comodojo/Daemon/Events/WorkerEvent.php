@@ -1,7 +1,8 @@
 <?php namespace Comodojo\Daemon\Events;
 
 use \Comodojo\Daemon\Process;
-use \Comodojo\Daemon\Worker\WorkerInterface;
+use \Comodojo\Daemon\Worker\Worker;
+use \Comodojo\Daemon\Worker\Loop;
 use \Comodojo\Foundation\Events\AbstractEvent;
 
 /**
@@ -26,19 +27,19 @@ class WorkerEvent extends AbstractEvent {
 
     private $worker;
 
-    public function __construct($signal, Process $process, WorkerInterface $worker) {
+    public function __construct($signal, Loop $loop, Worker $worker) {
 
         parent::__construct("daemon.worker.$signal");
 
-        $this->process = $process;
+        $this->loop = $loop;
 
         $this->worker = $worker;
 
     }
 
-    public function getProcess() {
+    public function getLoop() {
 
-        return $this->process;
+        return $this->loop;
 
     }
 

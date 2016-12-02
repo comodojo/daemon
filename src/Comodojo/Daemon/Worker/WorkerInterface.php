@@ -21,6 +21,8 @@ use \Psr\Log\LoggerInterface;
 
 interface WorkerInterface {
 
+    public function getId();
+
     public function getName();
 
     public function spinup();

@@ -127,7 +127,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     }
 
-    public function reset() {
+    public function default() {
 
         if ( $this->pointer === null ) {
             $result = [];

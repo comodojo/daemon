@@ -16,6 +16,6 @@ $worker_2 = new Worker();
 $daemon->workers->install($worker_2, 2, true);
 
 $worker_3 = new Worker();
-$daemon->workers->install($worker_3, 3, true);
+$daemon->workers->install($worker_3, 1, false);
 
 $daemon->init();

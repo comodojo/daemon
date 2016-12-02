@@ -2,7 +2,6 @@
 
 use \Comodojo\Daemon\Daemon;
 use \Comodojo\Daemon\Utils\ProcessTools;
-use \Comodojo\Daemon\Events\WorkerEvent;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\DataAccess\IteratorTrait;
 use \Comodojo\Foundation\DataAccess\CountableTrait;
@@ -61,7 +60,8 @@ use \Countable;
         $w->instance = $worker;
         $w->looptime = $looptime;
         $w->forever = $forever;
-        $w->shared = new SharedMemory(hexdec($worker->getId()));
+        $w->output = new SharedMemory((int)'1'.hexdec($worker->getId()));
+        $w->input = new SharedMemory((int)'2'.hexdec($worker->getId()));
 
         $this->data[$name] = $w;
 
@@ -119,8 +119,11 @@ use \Countable;
         $worker = $this->get($name);
         $daemon = $this->daemon;
 
+        // update pid reference
+        $daemon->pid = ProcessTools::getPid();
+
         // cleanup events
-        $daemon->signals->any()->reset();
+        $daemon->signals->any()->default();
 
         // unmask signals (if restart)
         if ( $unmask === true ) {
@@ -133,50 +136,11 @@ use \Countable;
         $worker->instance->logger = $logger;
         $worker->instance->events = $events;
 
+        $loop = new Loop($worker);
+
         $this->declassDaemon($daemon);
 
-        // declare ticks and ticker
-        declare(ticks=5);
-        register_tick_function([$this, 'ticker'], $worker);
-
-        // register internal listeners
-        $events->subscribe('daemon.worker.close', '\Comodojo\Daemon\Listeners\StopWorker');
-
-        // set worker components
-        $daemon->loopcount = 0;
-        $daemon->loopactive = true;
-        $daemon->loopelapsed = 0;
-
-        // update pid reference
-        $daemon->pid = ProcessTools::getPid();
-
-        // launch daemon
-        $worker->instance->spinup();
-
-        // start looping
-        while ($daemon->loopactive) {
-
-            $start = microtime(true);
-
-            // $daemon->events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
-            $events->emit( new WorkerEvent('loopstart', $daemon, $worker->instance) );
-
-            $worker->instance->loop();
-
-            $daemon->loopcount++;
-
-            $daemon->loopelapsed = (microtime(true) - $start);
-
-            // $daemon->events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
-            $events->emit( new WorkerEvent('loopstop', $daemon, $worker->instance) );
-
-            $lefttime = $worker->looptime - $daemon->loopelapsed;
-
-            if ( $lefttime > 0 ) usleep($lefttime * 1000000);
-
-        }
-
-        $worker->instance->spindown();
+        $loop->start();
 
         $daemon->end(0);
 
@@ -192,7 +156,7 @@ use \Countable;
                 $time = time() + 5;
 
                 // try to gently ask the worker to close
-                $worker->shared->send('close');
+                $worker->output->send('stop');
 
                 while (time() < $time) {
 
@@ -202,7 +166,8 @@ use \Countable;
                 }
 
                 // close the shared memory block
-                $worker->shared->close();
+                $worker->input->close();
+                $worker->output->close();
 
                 // terminate the worker if still alive
                 if ($this->running($worker->pid)) ProcessTools::term($worker->pid, 5, SIGTERM);
@@ -216,6 +181,30 @@ use \Countable;
     public function running($pid) {
 
         return ProcessTools::isRunning($pid);
+
+    }
+
+    public function status($name = null) {
+
+        if ( $name === null ) {
+
+            $result = [];
+            foreach ($this->data as $name => $worker) {
+                $result[$name] = $this->getStatus($worker);
+            }
+            return $result;
+
+        }
+
+        $worker = $this->get($name);
+
+        return $this->getStatus($worker);
+
+    }
+
+    private function getStatus(Worker $worker) {
+
+        return $worker->input->read();
 
     }
 
@@ -237,16 +226,6 @@ use \Countable;
         unset($daemon->socket);
         unset($daemon->workers);
         unset($daemon->console);
-
-    }
-
-    public function ticker($worker) {
-
-        $signal = $worker->shared->read();
-        if ( !empty($signal) ) {
-            $worker->instance->events->emit( new WorkerEvent($signal, $this->daemon, $worker->instance) );
-            $worker->shared->delete();
-        }
 
     }
 

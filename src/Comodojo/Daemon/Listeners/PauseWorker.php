@@ -3,13 +3,13 @@
 use \League\Event\AbstractListener;
 use \League\Event\EventInterface;
 
-class StopWorker extends AbstractListener {
+class PauseWorker extends AbstractListener {
 
     public function handle(EventInterface $event) {
 
         $loop = $event->getLoop();
 
-        $loop->stop();
+        $loop->pause();
 
     }
 

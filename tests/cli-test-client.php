@@ -10,6 +10,8 @@ $data = $client->send('echo', "this is a test message");
 
 echo "\n\n >> $data << \n\n";
 
-$data = $client->send('reload', "");
+$data = $client->send('wstatus', "");
+
+echo "\n\n".var_export($data, true)."\n\n";
 
 $client->close();
