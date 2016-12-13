@@ -31,11 +31,11 @@ abstract class AbstractWorker implements WorkerInterface {
 
     public $signals;
 
-    public function __construct() {
+    public function __construct($name=null) {
 
         $this->id = uniqid();
 
-        $this->name = is_null($this->name) ? 'worker.'.$this->id : $this->name;
+        $this->name = empty($name) ? 'worker.'.$this->id : $this->name;
 
     }
 

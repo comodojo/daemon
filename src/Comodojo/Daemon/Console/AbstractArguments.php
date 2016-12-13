@@ -1,6 +1,5 @@
 <?php namespace Comodojo\Daemon\Console;
 
-use \Comodojo\Foundation\DataAccess\Model;
 use \Comodojo\Foundation\DataAccess\ArrayAccessTrait;
 
 /**
@@ -19,9 +18,17 @@ use \Comodojo\Foundation\DataAccess\ArrayAccessTrait;
  * THE SOFTWARE.
  */
 
-abstract class AbstractArguments extends Model {
+abstract class AbstractArguments {
 
     use ArrayAccessTrait;
+
+    protected $data = [];
+
+    public function export() {
+
+        return $this->data;
+
+    }
 
     public static function create() {
 

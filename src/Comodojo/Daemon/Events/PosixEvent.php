@@ -21,7 +21,7 @@ use \Comodojo\Foundation\Events\AbstractEvent;
 
 class PosixEvent extends AbstractEvent {
 
-    private $process;
+    protected $process;
 
     public function __construct($signal, Process $process) {
 

@@ -23,9 +23,9 @@ use \Comodojo\Foundation\Events\AbstractEvent;
 
 class WorkerEvent extends AbstractEvent {
 
-    private $process;
+    protected $loop;
 
-    private $worker;
+    protected $worker;
 
     public function __construct($signal, Loop $loop, Worker $worker) {
 

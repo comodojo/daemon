@@ -123,7 +123,7 @@ use \Countable;
         $daemon->pid = ProcessTools::getPid();
 
         // cleanup events
-        $daemon->signals->any()->default();
+        $daemon->signals->any()->setDefault();
 
         // unmask signals (if restart)
         if ( $unmask === true ) {

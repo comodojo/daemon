@@ -38,10 +38,6 @@ class PidLock extends AbstractLocker {
 
         if ( $lockfile !== null ) $this->lockfile = $lockfile;
 
-        // if ( empty($pid) ) throw new Exception("Invalid pid reference");
-
-        // $this->pid = $pid;
-
     }
 
     public function lock($pid) {

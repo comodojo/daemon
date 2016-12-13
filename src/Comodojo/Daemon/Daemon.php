@@ -1,6 +1,5 @@
 <?php namespace Comodojo\Daemon;
 
-use \Comodojo\Daemon\Utils\PropertiesValidator;
 use \Comodojo\Daemon\Utils\Checks;
 use \Comodojo\Daemon\Socket\Server as SocketServer;
 use \Comodojo\Daemon\Worker\Manager as WorkerManager;

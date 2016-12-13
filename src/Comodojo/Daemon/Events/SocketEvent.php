@@ -21,7 +21,7 @@ use \Comodojo\Foundation\Events\AbstractEvent;
 
 class SocketEvent extends AbstractEvent {
 
-    private $process;
+    protected $process;
 
     public function __construct($event, Process $process) {
 

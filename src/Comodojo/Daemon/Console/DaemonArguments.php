@@ -18,7 +18,7 @@
 
 class DaemonArguments extends AbstractArguments {
 
-    public $data = array(
+    protected $data = array(
         'verbose' => [
             'prefix' => 'v',
             'longPrefix' => 'verbose',

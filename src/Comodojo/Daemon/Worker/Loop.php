@@ -1,8 +1,9 @@
 <?php namespace Comodojo\Daemon\Worker;
 
 use \Comodojo\Daemon\Events\WorkerEvent;
-use \Countable;
+use \Comodojo\Foundation\Validation\DataFilter;
 use \Psr\Log\LoggerInterface;
+use \Countable;
 use \Exception;
 
 /**
@@ -48,7 +49,7 @@ class Loop implements Countable {
 
         $this->events = $worker->instance->events;
 
-        $this->looptime = $worker->looptime;
+        $this->looptime = DataFilter::filterInteger($worker->looptime, $min=1, $max=PHP_INT_MAX, $default=1);
 
         $this->events->subscribe('daemon.worker.stop', '\Comodojo\Daemon\Listeners\StopWorker');
         $this->events->subscribe('daemon.worker.pause', '\Comodojo\Daemon\Listeners\PauseWorker');

@@ -39,6 +39,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
         SIGIOT => 'SIGIOT',
         SIGBUS => 'SIGBUS',
         SIGFPE => 'SIGFPE',
+        // Noone can catch SIGKILL!
         // SIGKILL => 'SIGKILL',
         SIGUSR1 => 'SIGUSR1',
         SIGSEGV => 'SIGSEGV',
@@ -46,11 +47,8 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
         SIGPIPE => 'SIGPIPE',
         SIGALRM => 'SIGALRM',
         SIGTERM => 'SIGTERM',
-        SIGSTKFLT => 'SIGSTKFLT',
-        SIGCLD => 'SIGCLD',
         SIGCHLD => 'SIGCHLD',
         SIGCONT => 'SIGCONT',
-        // SIGSTOP => 'SIGSTOP',
         SIGTSTP => 'SIGTSTP',
         SIGTTIN => 'SIGTTIN',
         SIGTTOU => 'SIGTTOU',
@@ -60,25 +58,22 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
         SIGVTALRM => 'SIGVTALRM',
         SIGPROF => 'SIGPROF',
         SIGWINCH => 'SIGWINCH',
-        SIGPOLL => 'SIGPOLL',
-        // SIGIO => 'SIGIO',
-        SIGPWR => 'SIGPWR',
         SIGSYS => 'SIGSYS',
         SIGBABY => 'SIGBABY'
     ];
 
     protected $pointer;
 
-    // public function __construct() {
-    //
-    //     if ( defined('SIGPOLL') ) $this->signal[SIGPOLL] = 'SIGPOLL';
-    //     if ( defined('SIGPWR') ) $this->signal[SIGPWR] = 'SIGPWR';
-    //     if ( defined('SIGSTKFLT') ) $this->signal[SIGSTKFLT] = 'SIGSTKFLT';
-    //     if ( defined('SIGTERM') ) $this->signal[SIGTERM] = 'SIGTERM';
-    //     if ( defined('SIGINT') ) $this->signal[SIGINT] = 'SIGINT';
-    //     if ( defined('SIGKILL') ) $this->signal[SIGKILL] = 'SIGKILL';
-    //
-    // }
+    public function __construct() {
+
+        if ( defined('SIGPOLL') ) $this->data[SIGPOLL] = 'SIGPOLL';
+        if ( defined('SIGPWR') ) $this->data[SIGPWR] = 'SIGPWR';
+        if ( defined('SIGSTKFLT') ) $this->data[SIGSTKFLT] = 'SIGSTKFLT';
+        // if ( defined('SIGSTOP') ) $this->data[SIGSTOP] = 'SIGSTOP';
+        if ( defined('SIGIO') ) $this->data[SIGIO] = 'SIGIO';
+        if ( defined('SIGCLD') ) $this->data[SIGCLD] = 'SIGCLD';
+
+    }
 
     public function sigNo($signame) {
 
@@ -127,7 +122,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     }
 
-    public function default() {
+    public function setDefault() {
 
         if ( $this->pointer === null ) {
             $result = [];
