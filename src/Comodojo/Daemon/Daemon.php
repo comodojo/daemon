@@ -160,6 +160,8 @@ abstract class Daemon extends Process {
         // we're activating!
         $this->active = true;
 
+        $this->setup();
+
         foreach ($this->workers as $name => $worker) {
 
             $this->workers->start($name);
@@ -167,8 +169,6 @@ abstract class Daemon extends Process {
         }
 
         $this->becomeSupervisor();
-
-        $this->setup();
 
         // start listening on socket
         try {
