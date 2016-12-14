@@ -35,7 +35,7 @@ abstract class AbstractWorker implements WorkerInterface {
 
         $this->id = uniqid();
 
-        $this->name = empty($name) ? 'worker.'.$this->id : $this->name;
+        $this->name = empty($name) ? 'worker.'.$this->id : $name;
 
     }
 

@@ -8,6 +8,7 @@ use \Comodojo\Foundation\DataAccess\CountableTrait;
 use \Psr\Log\LoggerInterface;
 use \Iterator;
 use \Countable;
+use \Exception;
 
 /**
  * @package     Comodojo Daemon
