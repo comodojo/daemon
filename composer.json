@@ -32,7 +32,6 @@
         "ext-pcntl": "*",
         "ext-shmop": "*",
         "comodojo/foundation": "dev-master",
-        "comodojo/exceptions": "dev-master",
         "league/climate": "^3.0"
     },
     "require-dev": {
