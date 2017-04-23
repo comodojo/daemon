@@ -1,5 +1,8 @@
 <?php namespace Comodojo\Daemon\Worker;
 
+use \Comodojo\Daemon\Traits\EventsTrait;
+use \Comodojo\Daemon\Traits\LoggerTrait;
+use \Comodojo\Daemon\Traits\SignalsTrait;
 use \Psr\Log\LoggerInterface;
 use \Exception;
 
@@ -21,15 +24,13 @@ use \Exception;
 
 abstract class AbstractWorker implements WorkerInterface {
 
+    use EventsTrait;
+    use LoggerTrait;
+    use SignalsTrait;
+
     private $name;
 
     private $id;
-
-    public $logger;
-
-    public $events;
-
-    public $signals;
 
     public function __construct($name=null) {
 

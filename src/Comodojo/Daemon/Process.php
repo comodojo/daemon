@@ -4,7 +4,9 @@ use \Comodojo\Daemon\Events\PosixEvent;
 use \Comodojo\Daemon\Utils\ProcessTools;
 use \Comodojo\Daemon\Utils\Checks;
 use \Comodojo\Daemon\Utils\PosixSignals;
-use \Comodojo\Foundation\DataAccess\Model as DataModel;
+use \Comodojo\Daemon\Traits\EventsTrait;
+use \Comodojo\Daemon\Traits\LoggerTrait;
+use \Comodojo\Daemon\Traits\SignalsTrait;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\Logging\Manager as LogManager;
 use \Psr\Log\LoggerInterface;
@@ -27,7 +29,13 @@ use \Exception;
  * THE SOFTWARE.
  */
 
-abstract class Process extends DataModel {
+abstract class Process {
+
+    use EventsTrait;
+    use LoggerTrait;
+    use SignalsTrait;
+
+    protected $pid;
 
     /**
      * Build the process
@@ -63,6 +71,18 @@ abstract class Process extends DataModel {
         // register signals
         $this->signals = new PosixSignals();
         $this->signals->any()->call(array($this, 'signalToEvent'));
+
+    }
+
+    public function getPid() {
+
+        return $this->pid;
+
+    }
+
+    public function setPid($pid) {
+
+        $this->pid = $pid;
 
     }
 

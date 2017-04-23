@@ -2,6 +2,8 @@
 
 use \Comodojo\Daemon\Process;
 use \Comodojo\Daemon\Events\SocketEvent;
+use \Comodojo\Daemon\Traits\EventsTrait;
+use \Comodojo\Daemon\Traits\LoggerTrait;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\Validation\DataFilter;
 use \Psr\Log\LoggerInterface;
@@ -10,21 +12,18 @@ use \Exception;
 
 class Server extends AbstractSocket {
 
+    use EventsTrait;
+    use LoggerTrait;
+
     const DEFAULT_TIMEOUT = 10;
 
-    private $active;
-
-    // private $looping;
+    private $is_active;
 
     private $process;
 
     private $timeout;
 
-    public $commands;
-
-    public $logger;
-
-    public $events;
+    protected $commands;
 
     public function __construct(
         $handler,
@@ -51,13 +50,17 @@ class Server extends AbstractSocket {
 
     }
 
+    public function getCommands() {
+
+        return $this->commands;
+
+    }
+
     public function connect() {
 
         $this->socket = @stream_socket_server($this->handler, $errno, $errorMessage);
 
         if ( $this->socket === false ) throw new SocketException("Socket unavailable");
-
-        //register_shutdown_function(array($this, 'close'));
 
         return $this;
 
@@ -96,17 +99,11 @@ class Server extends AbstractSocket {
 
         $this->loop();
 
-        // $this->close();
-
     }
 
     public function stop() {
 
-        $this->active = false;
-
-        // while ($this->looping) continue;
-
-        // $this->close();
+        $this->is_active = false;
 
     }
 
@@ -122,8 +119,6 @@ class Server extends AbstractSocket {
 
         $clients = [];
 
-        // $this->looping = true;
-
         while($this->active) {
 
             $this->events->emit( new SocketEvent('loop', $this->process) );
@@ -133,7 +128,7 @@ class Server extends AbstractSocket {
 
             if( @stream_select($sockets, $write, $except, $this->timeout) === false ) {
 
-                if ( $this->checkSocketError() && $this->active ) {
+                if ( $this->checkSocketError() && $this->is_active ) {
                     $this->logger->debug("Socket reset due to incoming signal");
                     pcntl_signal_dispatch();
                     continue;
@@ -182,8 +177,6 @@ class Server extends AbstractSocket {
             }
 
         }
-
-        // $this->looping = false;
 
     }
 

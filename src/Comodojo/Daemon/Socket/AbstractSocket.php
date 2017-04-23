@@ -24,8 +24,18 @@ abstract class AbstractSocket {
 
     }
 
-    public function socket() {
+    public function getSocket() {
+
         return $this->socket;
+
+    }
+
+    protected function setSocket($socket) {
+
+        $this->socket = $socket;
+
+        return $this;
+
     }
 
     abstract public function connect();

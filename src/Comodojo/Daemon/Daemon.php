@@ -33,6 +33,18 @@ use \Exception;
 
 abstract class Daemon extends Process {
 
+    protected $pidlock;
+
+    protected $socket;
+
+    protected $workers;
+
+    protected $console;
+
+    protected $is_active;
+
+    protected $is_supervisor;
+
     protected static $default_properties = array(
         'pidfile' => 'daemon.pid',
         'socketfile' => 'unix://daemon.sock',
@@ -85,6 +97,12 @@ abstract class Daemon extends Process {
         $this->console->description($properties->description);
         $args = new $properties->arguments;
         $this->console->arguments->add( $args::create()->export() );
+
+    }
+
+    public function getWorkers() {
+
+        return $this->workers;
 
     }
 
@@ -158,7 +176,7 @@ abstract class Daemon extends Process {
     public function start() {
 
         // we're activating!
-        $this->active = true;
+        $this->is_active = true;
 
         $this->setup();
 
@@ -184,7 +202,7 @@ abstract class Daemon extends Process {
         }
 
         // loop closed; if I'm the supervisor, I should clean everything
-        if ( $this->supervisor && $this->active ) {
+        if ( $this->is_supervisor && $this->is_active ) {
             $this->stop();
             $this->end(0);
         }
@@ -205,7 +223,7 @@ abstract class Daemon extends Process {
 
         $this->pidlock->release();
 
-        $this->active = false;
+        $this->is_active = false;
 
     }
 
@@ -213,7 +231,7 @@ abstract class Daemon extends Process {
 
         $this->logger->notice("Initing supervisor subsystem");
 
-        $this->supervisor = true;
+        $this->is_supervisor = true;
 
         // lock current PID
         $this->pidlock->lock($this->pid);

@@ -121,7 +121,7 @@ use \Exception;
         $daemon = $this->daemon;
 
         // update pid reference
-        $daemon->pid = ProcessTools::getPid();
+        $daemon->setPid(ProcessTools::getPid());
 
         // cleanup events
         $daemon->signals->any()->setDefault();
