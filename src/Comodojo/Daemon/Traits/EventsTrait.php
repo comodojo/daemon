@@ -1,5 +1,7 @@
 <?php namespace Comodojo\Daemon\Traits;
 
+use \Comodojo\Foundation\Events\Manager as EventsManager;
+
 /**
  * @package     Comodojo Daemon
  * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
@@ -18,11 +20,35 @@
 
 trait EventsTrait {
 
+    /**
+     * Current events manager
+     *
+     * @var EventsManager
+     */
     protected $events;
 
+    /**
+     * Get current events manager.
+     *
+     * @return EventsManager
+     */
     public function getEvents() {
 
         return $this->events;
+
+    }
+
+    /**
+     * Set current events manager
+     *
+     * @param EventsManager $events
+     * @return self
+     */
+    public function setEvents(EventsManager $events) {
+
+        $this->events = $events;
+
+        return $this;
 
     }
 

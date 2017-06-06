@@ -21,7 +21,11 @@ use \Exception;
 class ProcessTools {
 
     /**
-     * Terminate a process
+     * Terminate a process, asking PID to terminate or killing it directly.
+     *
+     * @param int $pid
+     * @param int $lagger_timeout Timeout to wait before killing process if it refuses to terminate
+     * @param int $signal Signal to send (default to SIGTERM)
      *
      * @return  bool
      */
@@ -29,7 +33,8 @@ class ProcessTools {
 
         $kill_time = time() + $lagger_timeout;
 
-        $term = posix_kill($pid, $signal);
+        // $term = posix_kill($pid, $signal);
+        $term = self::signal($pid, $signal);
 
         while ( time() < $kill_time ) {
 
@@ -45,18 +50,27 @@ class ProcessTools {
     /**
      * Kill a process
      *
-     * @return  bool
+     * @param int $pid
+     * @return bool
      */
     public static function kill($pid) {
 
-        return posix_kill($pid, SIGKILL);
+        // return posix_kill($pid, SIGKILL);
+        return self::signal($pid, SIGKILL);
+
+    }
+
+    public static function signal($pid, $signal = SIGUSR1) {
+
+        return posix_kill($pid, $signal);
 
     }
 
     /**
      * Return true if process is still running, false otherwise
      *
-     * @return  bool
+     * @param int $pid
+     * @return bool
      */
     public static function isRunning($pid) {
 
@@ -64,18 +78,35 @@ class ProcessTools {
 
     }
 
+    /**
+     * Get niceness of a running process
+     *
+     * @param int|null $pid The pid to query, or current process if null
+     * @return int
+     */
     public static function getNiceness($pid = null) {
 
         return pcntl_getpriority($pid);
 
     }
 
+    /**
+     * Set niceness of a running process
+     *
+     * @param int|null $pid The pid to query, or current process if null
+     * @return bool
+     */
     public static function setNiceness($niceness, $pid = null) {
 
         return is_null($pid) ? proc_nice($niceness) : pcntl_setpriority($pid, $$niceness);
 
     }
 
+    /**
+     * Get current process PID
+     *
+     * @return int
+     */
     public static function getPid() {
 
         return posix_getpid();

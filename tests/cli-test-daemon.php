@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
 require  __DIR__ ."/bootstrap.php";
@@ -9,7 +10,7 @@ use \Comodojo\Daemon\Tests\Mock\Worker;
 
 $daemon = new Daemon([], LogManager::create('daemon', false)->getLogger());
 
-$worker_1 = new Worker();
+$worker_1 = new Worker("target_worker");
 $daemon->getWorkers()->install($worker_1, 1, true);
 
 $worker_2 = new Worker();

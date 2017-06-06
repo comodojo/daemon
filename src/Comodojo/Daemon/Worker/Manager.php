@@ -2,6 +2,8 @@
 
 use \Comodojo\Daemon\Daemon;
 use \Comodojo\Daemon\Utils\ProcessTools;
+use \Comodojo\Daemon\Traits\EventsTrait;
+use \Comodojo\Daemon\Traits\LoggerTrait;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\DataAccess\IteratorTrait;
 use \Comodojo\Foundation\DataAccess\CountableTrait;
@@ -30,10 +32,8 @@ use \Exception;
 
     use IteratorTrait;
     use CountableTrait;
-
-    public $logger;
-
-    public $events;
+    use EventsTrait;
+    use LoggerTrait;
 
     private $data = [];
 
@@ -49,20 +49,28 @@ use \Exception;
 
     }
 
+    /**
+     * Install a worker into the stack
+     *
+     * @param WorkerInterface $worker
+     * @param int $looptime
+     * @param bool $forever
+     * @return Manager
+     */
     public function install(WorkerInterface $worker, $looptime = 1, $forever = false) {
 
         $name = $worker->getName();
 
-        if ( $this->installed($name) ) {
+        if ( $this->isInstalled($name) ) {
             throw new Exception("Worker already installed");
         }
 
-        $w = new Worker();
-        $w->instance = $worker;
-        $w->looptime = $looptime;
-        $w->forever = $forever;
-        $w->output = new SharedMemory((int)'1'.hexdec($worker->getId()));
-        $w->input = new SharedMemory((int)'2'.hexdec($worker->getId()));
+        $w = Worker::create()
+            ->setInstance($worker)
+            ->setLooptime($looptime)
+            ->setForever($forever)
+            ->setInputChannel(new SharedMemory((int)'1'.hexdec($worker->getId())))
+            ->setOutputChannel(new SharedMemory((int)'2'.hexdec($worker->getId())));
 
         $this->data[$name] = $w;
 
@@ -72,11 +80,11 @@ use \Exception;
 
     public function setPid($name, $pid) {
 
-        if ( !$this->installed($name) ) {
+        if ( !$this->isInstalled($name) ) {
             throw new Exception("Worker not installed");
         }
 
-        $this->data[$name]->pid = $pid;
+        $this->data[$name]->setPid($pid);
 
         return $this;
 
@@ -86,7 +94,7 @@ use \Exception;
 
         if ( is_null($name) ) return $this->data;
 
-        if ( !$this->installed($name) ) {
+        if ( !$this->isInstalled($name) ) {
             throw new Exception("Worker not installed");
         }
 
@@ -94,7 +102,7 @@ use \Exception;
 
     }
 
-    public function installed($name) {
+    public function isInstalled($name) {
 
         return array_key_exists($name, $this->data);
 
@@ -124,22 +132,22 @@ use \Exception;
         $daemon->setPid(ProcessTools::getPid());
 
         // cleanup events
-        $daemon->signals->any()->setDefault();
+        $daemon->getSignals()->any()->setDefault();
 
         // unmask signals (if restart)
         if ( $unmask === true ) {
-            $daemon->signals->any()->unmask();
+            $daemon->getSignals()->any()->unmask();
         }
 
         // inject events and logger
-        $logger = $daemon->logger->withName($name);
+        $logger = $daemon->getLogger()->withName($name);
         $events = new EventsManager($logger);
-        $worker->instance->logger = $logger;
-        $worker->instance->events = $events;
+        $worker->getInstance()->setLogger($logger);
+        $worker->getInstance()->setEvents($events);
 
         $loop = new Loop($worker);
 
-        $this->declassDaemon($daemon);
+        $daemon->declass();
 
         $loop->start();
 
@@ -151,27 +159,29 @@ use \Exception;
 
         foreach ($this->data as $wname => $worker) {
 
+            $wpid = $worker->getPid();
+
             if ( is_null($name) || $name == $wname ) {
 
                 // fix the wait time;
                 $time = time() + 5;
 
                 // try to gently ask the worker to close
-                $worker->output->send('stop');
+                $worker->getOutputChannel()->send('stop');
 
                 while (time() < $time) {
 
-                    if ( !$this->running($worker->pid) ) break;
+                    if ( !$this->running($wpid) ) break;
                     usleep(20000);
 
                 }
 
                 // close the shared memory block
-                $worker->input->close();
-                $worker->output->close();
+                $worker->getInputChannel()->close();
+                $worker->getOutputChannel()->close();
 
                 // terminate the worker if still alive
-                if ($this->running($worker->pid)) ProcessTools::term($worker->pid, 5, SIGTERM);
+                if ($this->running($wpid)) ProcessTools::term($wpid, 5, SIGTERM);
 
             }
 
@@ -205,28 +215,7 @@ use \Exception;
 
     private function getStatus(Worker $worker) {
 
-        return $worker->input->read();
-
-    }
-
-    private function declassDaemon($daemon) {
-
-        // remove supervisor flag
-        $daemon->supervisor = false;
-
-        // remove supervisor flag
-        $daemon->supervisor = false;
-
-        // Unsubscribe supervisor default events (if any)
-        $daemon->events->removeAllListeners('daemon.posix.'.SIGTERM);
-        $daemon->events->removeAllListeners('daemon.posix.'.SIGINT);
-        $daemon->events->removeAllListeners('daemon.socket.loop');
-
-        // unset supervisor components
-        unset($daemon->pidlock);
-        unset($daemon->socket);
-        unset($daemon->workers);
-        unset($daemon->console);
+        return $worker->getInputChannel()->read();
 
     }
 

@@ -4,6 +4,7 @@ use \Comodojo\Daemon\Events\PosixEvent;
 use \Comodojo\Daemon\Utils\ProcessTools;
 use \Comodojo\Daemon\Utils\Checks;
 use \Comodojo\Daemon\Utils\PosixSignals;
+use \Comodojo\Daemon\Traits\PidTrait;
 use \Comodojo\Daemon\Traits\EventsTrait;
 use \Comodojo\Daemon\Traits\LoggerTrait;
 use \Comodojo\Daemon\Traits\SignalsTrait;
@@ -31,22 +32,17 @@ use \Exception;
 
 abstract class Process {
 
+    use PidTrait;
     use EventsTrait;
     use LoggerTrait;
     use SignalsTrait;
-
-    protected $pid;
 
     /**
      * Build the process
      *
      * @param int $niceness
-     * @param EventsManager $events;
      * @param LoggerInterface $logger;
-     *
-     * @property EventsManager $events
-     * @property LoggerInterface $logger
-     * @property int $pid
+     * @param EventsManager $events;
      */
     public function __construct($niceness = null, LoggerInterface $logger = null, EventsManager $events = null){
 
@@ -74,22 +70,13 @@ abstract class Process {
 
     }
 
-    public function getPid() {
-
-        return $this->pid;
-
-    }
-
-    public function setPid($pid) {
-
-        $this->pid = $pid;
-
-    }
-
     /**
-     * The generig signal handler.
+     * The generic signal handler.
      *
-     * It can be used to catch custom signals using events
+     * It transforms a signal into framework catchable event.
+     *
+     * @param int $signal
+     * @return self
      */
     public function signalToEvent($signal) {
 
@@ -104,9 +91,13 @@ abstract class Process {
 
         }
 
+        return $this;
+
     }
 
     /**
+     * Stop current process execution.
+     *
      * @param integer $return_code
      */
     public function end($return_code) {

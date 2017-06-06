@@ -100,6 +100,10 @@ abstract class Daemon extends Process {
 
     }
 
+    public function getSocket() {
+        return $this->socket;
+    }
+
     public function getWorkers() {
 
         return $this->workers;
@@ -259,6 +263,24 @@ abstract class Daemon extends Process {
             // $this->events->subscribe('daemon.socket.loop', '\Comodojo\Daemon\Listeners\WorkerWatchdog');
             $this->events->subscribe('daemon.posix.'.SIGCHLD, '\Comodojo\Daemon\Listeners\WorkerWatchdog');
         }
+
+    }
+
+    public function declass() {
+
+        // remove supervisor flag
+        $this->is_supervisor = false;
+
+        // Unsubscribe supervisor default events (if any)
+        $this->events->removeAllListeners('daemon.posix.'.SIGTERM);
+        $this->events->removeAllListeners('daemon.posix.'.SIGINT);
+        $this->events->removeAllListeners('daemon.socket.loop');
+
+        // unset supervisor components
+        unset($this->pidlock);
+        unset($this->socket);
+        unset($this->workers);
+        unset($this->console);
 
     }
 

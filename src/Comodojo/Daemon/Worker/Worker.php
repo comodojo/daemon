@@ -1,5 +1,7 @@
 <?php namespace Comodojo\Daemon\Worker;
 
+use \Comodojo\Daemon\Traits\PidTrait;
+
 /**
  * @package     Comodojo Daemon
  * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
@@ -18,7 +20,7 @@
 
 class Worker {
 
-    protected $pid;
+    use PidTrait;
 
     protected $instance;
 
@@ -30,17 +32,9 @@ class Worker {
 
     protected $output_channel;
 
-    public function getPid() {
+    public static function create() {
 
-        return $this->pid;
-
-    }
-
-    public function setPid($pid) {
-
-        $this->pid = $pid;
-
-        return $this;
+        return new Worker();
 
     }
 
@@ -86,42 +80,32 @@ class Worker {
 
     }
 
-    public function getInput() {
+    public function getInputChannel() {
 
-        return $this->input;
+        return $this->input_channel;
 
     }
 
-    public function setInput($input) {
+    public function setInputChannel($input) {
 
-        $this->input = $input;
+        $this->input_channel = $input;
 
         return $this;
 
     }
 
-    public function getOutput() {
+    public function getOutputChannel() {
 
-        return $this->output;
+        return $this->output_channel;
 
     }
 
-    public function setOutput($output) {
+    public function setOutputChannel($output) {
 
-        $this->output = $output;
+        $this->output_channel = $output;
 
         return $this;
 
     }
-
-
-    protected $data = array(
-        'pid' => null,
-        'instance' => null,
-        'looptime' => 1,
-        'forever' => false,
-        'input' => null,
-        'output' => null
-    );
 
 }

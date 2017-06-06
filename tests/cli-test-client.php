@@ -14,4 +14,12 @@ $data = $client->send('wstatus', "");
 
 echo "\n\n".var_export($data, true)."\n\n";
 
+$data = $client->send('pause', "");
+
+echo "\n\n".var_export($data, true)."\n\n";
+
+$data = $client->send('wstatus', "");
+
+echo "\n\n".var_export($data, true)."\n\n";
+
 $client->close();

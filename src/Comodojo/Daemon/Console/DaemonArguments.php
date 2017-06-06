@@ -41,7 +41,7 @@ class DaemonArguments extends AbstractArguments {
             'noValue' => true
         ],
         'hardstart' => [
-            'prefix' => 'h',
+            'prefix' => 's',
             'longPrefix' => 'hardstart',
             'description' => 'Attempt to clean sock and lock files before startup',
             'required' => false,

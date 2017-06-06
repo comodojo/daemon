@@ -47,9 +47,9 @@ class Loop implements Countable {
 
         $this->worker = $worker;
 
-        $this->events = $worker->instance->events;
+        $this->events = $worker->getInstance()->getEvents();
 
-        $this->looptime = DataFilter::filterInteger($worker->looptime, $min=1, $max=PHP_INT_MAX, $default=1);
+        $this->looptime = DataFilter::filterInteger($worker->getLooptime(), $min=1, $max=PHP_INT_MAX, $default=1);
 
         $this->events->subscribe('daemon.worker.stop', '\Comodojo\Daemon\Listeners\StopWorker');
         $this->events->subscribe('daemon.worker.pause', '\Comodojo\Daemon\Listeners\PauseWorker');
@@ -69,7 +69,7 @@ class Loop implements Countable {
 
         // spinup daemon
         $this->setStatus(self::SPINUP);
-        $this->worker->instance->spinup();
+        $this->worker->getInstance()->spinup();
 
         // start looping
         $this->setStatus(self::LOOPING);
@@ -87,7 +87,7 @@ class Loop implements Countable {
 
             $this->events->emit( new WorkerEvent('loopstart', $this, $this->worker) );
 
-            $this->worker->instance->loop();
+            $this->worker->getInstance()->loop();
 
             ++$this->count;
 
@@ -104,7 +104,7 @@ class Loop implements Countable {
         $this->setStatus(self::SPINDOWN);
 
         // spindown worker
-        $this->worker->instance->spindown();
+        $this->worker->getInstance()->spindown();
 
         return;
 
@@ -118,13 +118,13 @@ class Loop implements Countable {
 
     public function pause() {
 
-        $this->pause = true;
+        $this->paused = true;
 
     }
 
     public function resume() {
 
-        $this->pause = false;
+        $this->paused = false;
 
     }
 
@@ -136,18 +136,18 @@ class Loop implements Countable {
 
     public function ticker() {
 
-        $signal = $this->worker->output->read();
+        $signal = $this->worker->getOutputChannel()->read();
 
         if ( !empty($signal) ) {
             $this->events->emit( new WorkerEvent($signal, $this, $this->worker) );
-            $this->worker->output->delete();
+            $this->worker->getOutputChannel()->delete();
         }
 
     }
 
     private function setStatus($status) {
         $this->status = $status;
-        return $this->worker->input->send($status);
+        return $this->worker->getInputChannel()->send($status);
     }
 
 }

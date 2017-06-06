@@ -1,4 +1,4 @@
-<?php namespace Comodojo\Daemon\Worker;
+<?php namespace Comodojo\Daemon\Traits;
 
 /**
  * @package     Comodojo Daemon
@@ -16,43 +16,39 @@
  * THE SOFTWARE.
  */
 
-interface WorkerInterface {
+trait PidTrait {
+
 
     /**
-     * Get worker id (unique).
+     * Current PID
      *
-     * @return string
+     * @var int
      */
-    public function getId();
+    protected $pid;
 
     /**
-     * Get worker name.
+     * Get current PID.
      *
-     * @return string
+     * @return int
      */
-    public function getName();
+    public function getPid() {
+
+        return $this->pid;
+
+    }
 
     /**
-     * Spinup worker
+     * Set current PID.
      *
-     * @return null
+     * @param int $pid
+     * @return self
      */
-    public function spinup();
+    public function setPid($pid) {
 
-    /**
-     * The worker loop
-     *
-     * This method will be called inside the main daemon loop
-     *
-     * @return null
-     */
-    public function loop();
+        $this->pid = $pid;
 
-    /**
-     * Spindown worker
-     *
-     * @return null
-     */
-    public function spindown();
+        return $this;
+
+    }
 
 }

@@ -1,5 +1,7 @@
 <?php namespace Comodojo\Daemon\Traits;
 
+use \Psr\Log\LoggerInterface;
+
 /**
  * @package     Comodojo Daemon
  * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
@@ -18,11 +20,35 @@
 
 trait LoggerTrait {
 
+    /**
+     * Current logger
+     *
+     * @var LoggerInterface
+     */
     protected $logger;
 
+    /**
+     * Get current logger.
+     *
+     * @return LoggerInterface
+     */
     public function getLogger() {
 
         return $this->logger;
+
+    }
+
+    /**
+     * Set current logger
+     *
+     * @param LoggerInterface $logger
+     * @return self
+     */
+    public function setLogger(LoggerInterface $logger) {
+
+        $this->logger = $logger;
+
+        return $this;
 
     }
 
