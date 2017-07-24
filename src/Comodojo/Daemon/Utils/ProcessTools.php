@@ -98,7 +98,7 @@ class ProcessTools {
      */
     public static function setNiceness($niceness, $pid = null) {
 
-        return is_null($pid) ? proc_nice($niceness) : pcntl_setpriority($pid, $$niceness);
+        return is_null($pid) ? proc_nice($niceness) : pcntl_setpriority($pid, $niceness);
 
     }
 
