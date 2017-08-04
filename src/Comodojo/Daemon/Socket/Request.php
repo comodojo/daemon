@@ -2,9 +2,9 @@
 
 class Request extends AbstractMessage {
 
-    protected $data = array(
+    protected $data = [
         'command' => null,
-        'payload' => array()
-    );
+        'payload' => null
+    ];
 
 }

@@ -7,7 +7,11 @@ class Client extends AbstractSocket {
 
     public function connect() {
 
-        $this->socket = stream_socket_client($this->handler, $errno, $errorMessage);
+        $this->socket = @stream_socket_client($this->handler, $errno, $errorMessage);
+
+        if ( $this->socket === false ) {
+            throw new SocketException("Socket connect failed: ($errno) $errorMessage");
+        }
 
         $greeter = $this->readGreeter();
 
@@ -37,7 +41,7 @@ class Client extends AbstractSocket {
 
     }
 
-    public function send($command, $payload) {
+    public function send($command, $payload = null) {
 
         $request = new Request();
 
