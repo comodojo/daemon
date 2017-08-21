@@ -1,7 +1,7 @@
 <?php namespace Comodojo\Daemon\Worker;
 
-use \Comodojo\Daemon\Traits\EventsTrait;
-use \Comodojo\Daemon\Traits\LoggerTrait;
+use \Comodojo\Foundation\Events\EventsTrait;
+use \Comodojo\Foundation\Logging\LoggerTrait;
 use \Comodojo\Daemon\Traits\SignalsTrait;
 use \Psr\Log\LoggerInterface;
 use \Exception;

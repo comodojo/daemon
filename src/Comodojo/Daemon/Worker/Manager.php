@@ -2,8 +2,8 @@
 
 use \Comodojo\Daemon\Daemon;
 use \Comodojo\Daemon\Utils\ProcessTools;
-use \Comodojo\Daemon\Traits\EventsTrait;
-use \Comodojo\Daemon\Traits\LoggerTrait;
+use \Comodojo\Foundation\Events\EventsTrait;
+use \Comodojo\Foundation\Logging\LoggerTrait;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\DataAccess\IteratorTrait;
 use \Comodojo\Foundation\DataAccess\CountableTrait;

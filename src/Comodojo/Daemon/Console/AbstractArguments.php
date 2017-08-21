@@ -24,12 +24,22 @@ abstract class AbstractArguments {
 
     protected $data = [];
 
+    /**
+     * Return the amount of routes loaded
+     *
+     * @return array
+     */
     public function export() {
 
         return $this->data;
 
     }
 
+    /**
+     * Return the amount of routes loaded
+     *
+     * @return int $count
+     */
     public static function create() {
 
         $class = get_called_class();
