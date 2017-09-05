@@ -1,5 +1,7 @@
 <?php namespace Comodojo\Daemon\Traits;
 
+use \Comodojo\Daemon\Utils\PosixSignals;
+
 /**
  * @package     Comodojo Daemon
  * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
@@ -23,6 +25,12 @@ trait SignalsTrait {
     public function getSignals() {
 
         return $this->signals;
+
+    }
+
+    public function setSignals(PosixSignals $signals) {
+
+        $this->signals = $signals;
 
     }
 

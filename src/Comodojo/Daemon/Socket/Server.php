@@ -25,7 +25,7 @@ use \Exception;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
- 
+
 class Server extends AbstractSocket {
 
     use EventsTrait;
@@ -33,7 +33,7 @@ class Server extends AbstractSocket {
 
     const DEFAULT_TIMEOUT = 10;
 
-    private $is_active;
+    private $active;
 
     private $process;
 
@@ -119,7 +119,7 @@ class Server extends AbstractSocket {
 
     public function stop() {
 
-        $this->is_active = false;
+        $this->active = false;
 
     }
 
@@ -144,13 +144,14 @@ class Server extends AbstractSocket {
 
             if( @stream_select($sockets, $write, $except, $this->timeout) === false ) {
 
-                if ( $this->checkSocketError() && $this->is_active ) {
+                if ( $this->checkSocketError() && $this->active ) {
                     $this->logger->debug("Socket reset due to incoming signal");
                     pcntl_signal_dispatch();
                     continue;
                 }
 
-                throw new SocketException("Error selecting sockets");
+                $socket_error = error_get_last();
+                throw new SocketException("Error selecting sockets: (".$socket_error['type'].") ".$socket_error['message']);
 
             }
 

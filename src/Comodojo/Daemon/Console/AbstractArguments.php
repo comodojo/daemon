@@ -1,6 +1,7 @@
 <?php namespace Comodojo\Daemon\Console;
 
 use \Comodojo\Foundation\DataAccess\ArrayAccessTrait;
+use \ArrayAccess;
 
 /**
  * @package     Comodojo Daemon
@@ -18,14 +19,17 @@ use \Comodojo\Foundation\DataAccess\ArrayAccessTrait;
  * THE SOFTWARE.
  */
 
-abstract class AbstractArguments {
+abstract class AbstractArguments implements ArrayAccess {
 
     use ArrayAccessTrait;
 
+    /**
+     * @var array
+     */
     protected $data = [];
 
     /**
-     * Return the amount of routes loaded
+     * Export data as array
      *
      * @return array
      */
@@ -36,9 +40,9 @@ abstract class AbstractArguments {
     }
 
     /**
-     * Return the amount of routes loaded
+     * Static constructor
      *
-     * @return int $count
+     * @return self
      */
     public static function create() {
 

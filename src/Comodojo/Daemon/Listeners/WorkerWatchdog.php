@@ -18,7 +18,7 @@ use \League\Event\EventInterface;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
- 
+
 class WorkerWatchdog extends AbstractListener {
 
     public function handle(EventInterface $event) {
@@ -30,7 +30,7 @@ class WorkerWatchdog extends AbstractListener {
 
         foreach ($workers as $name => $worker) {
 
-            if ($workers->running($worker->pid)) {
+            if ($workers->running($worker->getPid())) {
 
                 $logger->debug("Worker $name seems to be running");
 
@@ -38,7 +38,7 @@ class WorkerWatchdog extends AbstractListener {
 
                 $logger->debug("Worker $name has exited");
 
-                if ($worker->forever) {
+                if ($worker->getForever()) {
                     $logger->debug("Attempting to restart $name");
                     $workers->start($name, true);
                 } else {

@@ -62,7 +62,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
         SIGBABY => 'SIGBABY'
     ];
 
-    protected $pointer;
+    protected $pointer = [];
 
     public function __construct() {
 
@@ -89,11 +89,13 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     }
 
-    public function on($signal) {
+    public function on(...$signals) {
 
-        if ( !isset($this[$signal]) ) throw new Exception("Signal $signal not supported");
+        foreach ($signals as $signal) {
+            if ( !isset($this[$signal]) ) throw new Exception("Signal $signal not supported");
+        }
 
-        $this->pointer = $signal;
+        $this->pointer = $signals;
 
         return $this;
 
@@ -101,7 +103,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     public function any() {
 
-        $this->pointer = null;
+        $this->pointer = [];
 
         return $this;
 
@@ -109,7 +111,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     public function call($callable) {
 
-        if ( $this->pointer === null ) {
+        if ( empty($this->pointer) ) {
             $result = [];
             foreach ($this as $signo => $signame) {
                 $result[] = $re = pcntl_signal($signo, $callable);
@@ -118,13 +120,15 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
             return !in_array(false, $result);
         }
 
-        return pcntl_signal($this->pointer, $callable);
+        return array_map(function($signal) {
+            return pcntl_signal($signal, $callable);
+        }, $this->pointer);
 
     }
 
     public function setDefault() {
 
-        if ( $this->pointer === null ) {
+        if ( empty($this->pointer) ) {
             $result = [];
             foreach ($this as $signo => $signame) {
                 $result[] = pcntl_signal($signo, SIG_DFL);
@@ -132,14 +136,16 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
             return !in_array(false, $result);
         }
 
-        return pcntl_signal($this->pointer, SIG_DFL);
+        return array_map(function($signal) {
+            return pcntl_signal($signal, SIG_DFL);
+        }, $this->pointer);
 
     }
 
     public function mask() {
 
-        if ( $this->pointer === null ) {
-            return pcntl_sigprocmask(SIG_SETMASK, $this);
+        if ( empty($this->pointer) ) {
+            return pcntl_sigprocmask(SIG_SETMASK, (array) $this);
         }
 
         return pcntl_sigprocmask(SIG_BLOCK, $this->pointer);
@@ -148,7 +154,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     public function unmask() {
 
-        if ( $this->pointer === null ) {
+        if ( empty($this->pointer) ) {
             return pcntl_sigprocmask(SIG_SETMASK, []);
         }
 

@@ -52,10 +52,10 @@ abstract class AbstractWorker implements WorkerInterface {
 
     }
 
-    abstract public function spinup();
+    public function spinup() {}
+
+    public function spindown() {}
 
     abstract public function loop();
-
-    abstract public function spindown();
 
 }

@@ -18,6 +18,11 @@
 
 class DaemonArguments extends AbstractArguments {
 
+    /**
+     * Default daemon's cli arguments.
+     *
+     * @var array
+     */
     protected $data = array(
         'verbose' => [
             'prefix' => 'v',
@@ -43,7 +48,7 @@ class DaemonArguments extends AbstractArguments {
         'hardstart' => [
             'prefix' => 's',
             'longPrefix' => 'hardstart',
-            'description' => 'Attempt to clean sock and lock files before startup',
+            'description' => 'attempt to clean sock and lock files before startup',
             'required' => false,
             'noValue' => true
         ],

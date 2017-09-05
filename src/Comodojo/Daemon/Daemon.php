@@ -200,6 +200,7 @@ abstract class Daemon extends Process {
         } catch (SocketException $e) {
 
             // something did wrong on socket...
+            $this->logger->error($e->getMessage());
             $this->stop();
             $this->end(0);
 

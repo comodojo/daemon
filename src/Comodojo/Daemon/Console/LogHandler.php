@@ -22,9 +22,22 @@ use \League\CLImate\CLImate;
 
 class LogHandler extends AbstractProcessingHandler {
 
-    private $outputcontroller = null;
+    /**
+     * @var bool
+     */
+    private $include_context = false;
 
-    private static $colors = array(
+    /**
+     * @var CLImate
+     */
+    private $outputcontroller;
+
+    /**
+     * Colors to log level mapping
+     *
+     * @var array
+     */
+    private static $colors = [
         100 => 'light_green',
         200 => 'green',
         250 => 'light_yellow',
@@ -33,8 +46,11 @@ class LogHandler extends AbstractProcessingHandler {
         500 => 'red',
         550 => 'light_magenta',
         600 => 'magenta',
-    );
+    ];
 
+    /**
+     * Class constructor
+     */
     public function __construct($level = Logger::DEBUG, $bubble = true) {
 
         $this->outputcontroller = new CLImate();
@@ -43,6 +59,35 @@ class LogHandler extends AbstractProcessingHandler {
 
     }
 
+    /**
+     * Turn on context writer
+     *
+     * @return LogHandler
+     */
+    public function includeContext() {
+
+        $this->include_context = true;
+
+        return $this;
+
+    }
+
+    /**
+     * Turn off context writer
+     *
+     * @return LogHandler
+     */
+    public function excludeContext() {
+
+        $this->include_context = false;
+
+        return $this;
+
+    }
+
+    /**
+     * Record's writer
+     */
     protected function write(array $record) {
 
         $level = $record['level'];
@@ -57,6 +102,9 @@ class LogHandler extends AbstractProcessingHandler {
 
     }
 
+    /**
+     * Send record to console formatting it
+     */
     private function toConsole($time, $level, $message, $context) {
 
         $color = static::$colors[$level];
@@ -67,7 +115,11 @@ class LogHandler extends AbstractProcessingHandler {
 
         $this->outputcontroller->out($message);
 
-        //if ( !empty($context) ) $this->outputcontroller->out(sprintf($pattern, $color, var_export($context, true), $color));
+        if ( !empty($context) && $this->include_context ) {
+
+            $this->outputcontroller->out(sprintf($pattern, $color, var_export($context, true), $color));
+
+        }
 
     }
 

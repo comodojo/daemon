@@ -2,6 +2,7 @@
 
 use \Comodojo\Daemon\Daemon;
 use \Comodojo\Daemon\Utils\ProcessTools;
+use \Comodojo\Daemon\Utils\PosixSignals;
 use \Comodojo\Foundation\Events\EventsTrait;
 use \Comodojo\Foundation\Logging\LoggerTrait;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
@@ -139,11 +140,13 @@ use \Exception;
             $daemon->getSignals()->any()->unmask();
         }
 
-        // inject events and logger
+        // inject events, logger and signals
         $logger = $daemon->getLogger()->withName($name);
         $events = new EventsManager($logger);
+        $signals = new PosixSignals;
         $worker->getInstance()->setLogger($logger);
         $worker->getInstance()->setEvents($events);
+        $worker->getInstance()->setSignals($signals);
 
         $loop = new Loop($worker);
 
