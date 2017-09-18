@@ -33,6 +33,11 @@ class Daemon extends AbstractDaemon {
             return $status;
         });
 
+        $this->getSocket()->getCommands()->add('block', function ($data, $daemon) {
+            sleep(5);
+            return true;
+        });
+
         $this->getSocket()->getCommands()->add('pause', function ($data, $daemon) {
             $daemon->getWorkers()->get('target_worker')->getOutputChannel()->send('pause');
             return 1;

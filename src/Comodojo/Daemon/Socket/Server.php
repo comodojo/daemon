@@ -33,13 +33,19 @@ class Server extends AbstractSocket {
 
     const DEFAULT_TIMEOUT = 10;
 
-    private $active;
+    const DEFAULT_MAX_CLIENTS = 10;
+
+    private $active = false;
 
     private $process;
 
     private $timeout;
 
+    private $connections = [];
+
     protected $commands;
+
+    protected $max_connections;
 
     public function __construct(
         $handler,
@@ -47,7 +53,8 @@ class Server extends AbstractSocket {
         EventsManager $events,
         Process $process,
         $read_buffer = null,
-        $timeout = null
+        $timeout = null,
+        $max_connections = null
     ) {
 
         parent::__construct($handler, $read_buffer);
@@ -60,33 +67,11 @@ class Server extends AbstractSocket {
             ? self::DEFAULT_TIMEOUT
             : DataFilter::filterInteger($timeout, 0, 600, self::DEFAULT_TIMEOUT);
 
+        $this->max_connections = is_null($max_connections)
+            ? self::DEFAULT_MAX_CLIENTS
+            : DataFilter::filterInteger($max_connections, 1, 1024, self::DEFAULT_MAX_CLIENTS);
+
         $this->commands = new Commands();
-
-        $this->active = true;
-
-    }
-
-    public function getCommands() {
-
-        return $this->commands;
-
-    }
-
-    public function connect() {
-
-        $this->socket = @stream_socket_server($this->handler, $errno, $errorMessage);
-
-        if ( $this->socket === false ) throw new SocketException("Socket unavailable");
-
-        return $this;
-
-    }
-
-    public function close() {
-
-        stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
-
-        $this->clean();
 
     }
 
@@ -101,19 +86,82 @@ class Server extends AbstractSocket {
 
         $socket = new Server($handler, $logger, $events, $process, $read_buffer, $timeout);
 
-        $socket->connect();
+        return $socket->connect();
 
-        return $socket;
+    }
+
+    public function getCommands() {
+
+        return $this->commands;
+
+    }
+
+    public function connect() {
+
+        $this->socket = @socket_create(
+            $this->socket_domain,
+            $this->socket_type,
+            $this->socket_protocol
+        );
+
+        if ( $this->socket === false ) {
+            $error = self::getSocketError();
+            throw new SocketException("Socket unavailable: $error");
+        }
+
+        $bind = @socket_bind(
+            $this->socket,
+            $this->socket_resource,
+            $this->socket_port
+        );
+
+        if ( $bind === false ) {
+            $error = self::getSocketError($this->socket);
+            throw new SocketException("Cannot bind socket: $error");
+        }
+
+        socket_set_nonblock($this->socket);
+
+        return $this;
+
+    }
+
+    public function close() {
+
+        $this->stop();
+
+        @socket_shutdown($this->socket, 2);
+
+        $this->clean();
 
     }
 
     public function listen() {
 
-        stream_set_blocking($this->socket, 0);
+        $listen = socket_listen($this->socket);
 
-        $this->logger->info("Socket listening");
+        if ( $listen === false ) {
+            $error = self::getSocketError($this->socket);
+            throw new SocketException("Cannot put socket in listening mode: $error");
+        }
 
-        $this->loop();
+        $this->logger->debug("Socket listening on ".$this->handler);
+
+        $this->active = true;
+
+        try {
+
+            do {
+                $this->loop();
+            } while ($this->active);
+
+        } catch (Exception $e) {
+
+            $this->close();
+
+            throw $e;
+
+        }
 
     }
 
@@ -125,71 +173,119 @@ class Server extends AbstractSocket {
 
     public function clean() {
 
-        list($handler, $resource) = preg_split( '@(:\/\/)@', $this->handler );
-
-        if ( $handler == 'unix' && file_exists($resource) ) unlink($resource);
+        if ( $this->socket_domain == AF_UNIX && file_exists($this->socket_resource) ) {
+            unlink($this->socket_resource);
+        }
 
     }
 
     protected function loop() {
 
-        $clients = [];
+        $sockets[0] = $this->socket;
 
-        while($this->active) {
+        $sockets = array_merge($sockets, array_map(function($connection) {
+            return $connection->getSocket();
+        }, $this->connections));
 
-            $this->events->emit( new SocketEvent('loop', $this->process) );
+        // for ($i = 0; $i < $this->max_connections; $i++) {
+        //     if (isset($this->connections[$i])) {
+        //         $sockets[$i + 1] = $this->connections[$i]->getSocket();
+        //     }
+        // }
 
-            $sockets = $clients;
-            $sockets[] = $this->socket;
+        $select = @socket_select($sockets, $write, $except, $this->timeout);
 
-            if( @stream_select($sockets, $write, $except, $this->timeout) === false ) {
+        if ($select === false) {
 
-                if ( $this->checkSocketError() && $this->active ) {
-                    $this->logger->debug("Socket reset due to incoming signal");
-                    pcntl_signal_dispatch();
-                    continue;
+            if ( $this->checkSocketError() && $this->active ) {
+                $this->logger->debug("Socket reset due to incoming signal");
+                pcntl_signal_dispatch();
+                return;
+            }
+
+            $socket_error_message = self::getSocketError($this->socket);
+
+            throw new SocketException("Error selecting socket: $socket_error_message");
+
+        }
+
+        if( $select < 1 ) {
+            return;
+        }
+
+        if( in_array($this->socket, $sockets) ) {
+
+            for ($i=0; $i < $select; $i++) {
+
+                if ( empty($this->connections[$i]) ) {
+
+                    try {
+
+                        $this->logger->info("New incoming connection ($i)");
+
+                        $this->connections[$i] = new Connection($this->socket, $i);
+
+                        $this->open($this->connections[$i], 'connected');
+
+                    } catch (SocketException $se) {
+
+                        $this->logger->warning("Error accepting client: ".$se->getMessage());
+
+                    }
+
+                    unset($sockets[$i]);
+
                 }
-
-                $socket_error = error_get_last();
-                throw new SocketException("Error selecting sockets: (".$socket_error['type'].") ".$socket_error['message']);
 
             }
 
-            // Accept new connections (if any)
-            if( in_array($this->socket, $sockets) ) {
+            // for ($i=0; $i < $this->max_connections; $i++) {
+            //
+            //     if ( empty($this->connections[$i]) ) {
+            //
+            //         try {
+            //
+            //             $this->logger->info("New incoming connection ($i)");
+            //
+            //             $this->connections[$i] = new Connection($this->socket, $i);
+            //
+            //             $this->open($this->connections[$i], 'connected');
+            //
+            //         } catch (SocketException $se) {
+            //
+            //             $this->logger->warning("Error accepting client: ".$se->getMessage());
+            //
+            //         }
+            //
+            //         unset($sockets[$i]);
+            //
+            //     }
+            //
+            // }
 
-                $client = stream_socket_accept($this->socket);
+        }
 
-                if ($client) {
+        for ($i = 0; $i < $this->max_connections; $i++) {
 
-                    $clients[] = $client;
+            if (isset($this->connections[$i])) {
 
-                    $this->open($client);
+                $client = $this->connections[$i];
+
+                if (in_array($client->getSocket(), $sockets)) {
+
+                    $message = $this->read($client);
+
+                    if ($message === null) {
+                    // if ($message == null) {
+                         $this->hangup($client);
+                    } else if ( $message === false ) {
+                         continue;
+                    } else {
+                        $output = $this->serve($message);
+                        $this->write($client, $output);
+                    }
 
                 }
-
-                unset($sockets[array_search($this->socket, $sockets)]);
-
-            }
-
-            // Serve active clients
-            foreach($sockets as $socket) {
-
-                $message = $this->read($socket);
-
-                if ( $message === null ) {
-
-                    unset($clients[ array_search($socket, $clients) ]);
-                    $this->hangup($socket);
-                    continue;
-
-                }
-
-                if ( $message === false ) continue;
-
-                $output = $this->serve($message);
-
-                $this->write($socket, $output);
 
             }
 
@@ -197,34 +293,39 @@ class Server extends AbstractSocket {
 
     }
 
-    private function write($client, AbstractMessage $message) {
+    private function write(Connection $connection, AbstractMessage $message) {
 
-        $datagram = $message->serialize();
+        $socket = $connection->getSocket();
+        $datagram = $message->serialize()."\r\n";
 
-        $this->logger->debug("Sending message", $message->export());
-
-        stream_socket_sendto($client, $datagram);
+        return @socket_write($socket, $datagram, strlen($datagram));
 
     }
 
-    private function read($client) {
+    private function read(Connection $connection) {
 
-        $datagram = stream_socket_recvfrom($client, $this->read_buffer);
+        $datagram = '';
+        $socket = $connection->getSocket();
 
-        if ('' !== $datagram && false !== $datagram) {
+        while (true) {
+            $recv = @socket_read($socket, $this->read_buffer, PHP_NORMAL_READ);
+            // if ( $recv === false ) break;
+            // if ( $recv === 0 ) return null;
+            if ( $recv === false ) return null;
+            $datagram .= $recv;
+            if (empty($recv) || strstr($recv, PHP_EOL)) break;
+        }
+
+        $datagram = trim($datagram);
+
+        if ( !empty($datagram) && $datagram !== false) {
 
             $message = new Request();
 
-            $message->unserialize(trim($datagram));
-
-            $this->logger->debug("Received message", $message->export());
+            $message->unserialize($datagram);
 
             return $message;
 
-        }
-
-        if ('' === $datagram || false === $datagram || !is_resource($client) || feof($client)) {
-            return null;
         }
 
         return false;
@@ -265,23 +366,30 @@ class Server extends AbstractSocket {
 
     }
 
-    private function open($client) {
+    private function open(Connection $client, $status) {
+
+        $idx = $client->getIndex();
+
+        $this->logger->debug("Opening connection ($idx), sending greeter");
 
         $this->events->emit( new SocketEvent('client.connect', $this->process) );
 
         $message = new Greeter();
 
-        $message->status = 'connected';
+        $message->status = $status;
 
         $this->write($client, $message);
 
     }
 
-    private function hangup($client) {
+    private function hangup(Connection $connection) {
 
-        stream_socket_shutdown($client, STREAM_SHUT_RDWR);
-        stream_set_blocking($client, false);
-        fclose($client);
+        $index = $connection->getIndex();
+
+        $this->logger->info("Client hangup ($index)");
+
+        $this->connections[$index]->destroy();
+        unset($this->connections[$index]);
 
         $this->events->emit( new SocketEvent('client.hangup', $this->process) );
 

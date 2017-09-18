@@ -47,9 +47,10 @@ abstract class Daemon extends Process {
 
     protected static $default_properties = array(
         'pidfile' => 'daemon.pid',
-        'socketfile' => 'unix://daemon.sock',
-        'socketbuffer' => 8192,
-        'sockettimeout' => 15,
+        'sockethandler' => 'unix://daemon.sock',
+        'socketbuffer' => 1024,
+        'sockettimeout' => 2,
+        'socketmaxconnections' => 10,
         'niceness' => 0,
         'arguments' => '\\Comodojo\\Daemon\\Console\\DaemonArguments',
         'description' => 'Comodojo Daemon'
@@ -81,12 +82,13 @@ abstract class Daemon extends Process {
 
         // init the socket
         $this->socket = new SocketServer(
-            $properties->socketfile,
+            $properties->sockethandler,
             $this->logger,
             $this->events,
             $this,
             $properties->socketbuffer,
-            $properties->sockettimeout
+            $properties->sockettimeout,
+            $properties->socketmaxconnections
         );
 
         // init the worker manager
@@ -219,8 +221,6 @@ abstract class Daemon extends Process {
         $this->logger->notice("Stopping daemon...");
 
         $this->events->removeAllListeners('daemon.posix.'.SIGCHLD);
-
-        $this->socket->stop();
 
         $this->socket->close();
 

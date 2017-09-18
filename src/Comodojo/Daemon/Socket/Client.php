@@ -23,10 +23,26 @@ class Client extends AbstractSocket {
 
     public function connect() {
 
-        $this->socket = @stream_socket_client($this->handler, $errno, $errorMessage);
+        $this->socket = @socket_create(
+            $this->socket_domain,
+            $this->socket_type,
+            $this->socket_protocol
+        );
 
         if ( $this->socket === false ) {
-            throw new SocketException("Socket connect failed: ($errno) $errorMessage");
+            $error = self::getSocketError();
+            throw new SocketException("Socket unavailable: $error");
+        }
+
+        $connect = @socket_connect(
+            $this->socket,
+            $this->socket_resource,
+            $this->socket_port
+        );
+
+        if ( $connect === false ) {
+            $error = self::getSocketError($this->socket);
+            throw new SocketException("Cannot connect to socket: $error");
         }
 
         $greeter = $this->readGreeter();
@@ -45,7 +61,7 @@ class Client extends AbstractSocket {
 
     public function close() {
 
-        return stream_socket_shutdown($this->socket, STREAM_SHUT_RDWR);
+        return socket_close($this->socket);
 
     }
 
@@ -59,16 +75,11 @@ class Client extends AbstractSocket {
 
     public function send($command, $payload = null) {
 
-        $request = new Request();
-
-        $request->command = $command;
-        $request->payload = $payload;
-
-        $sent = $this->write($request);
+        $sent = $this->write($command, $payload);
 
         // TODO: manage exceptions!
 
-        $received = $this->readResponse();
+        $received = $this->read();
 
         if ( $received->status === false ) {
             throw new Exception($received->message);
@@ -78,19 +89,36 @@ class Client extends AbstractSocket {
 
     }
 
-    protected function write(Request $request) {
+    protected function write($command, $payload = null) {
 
-        $datagram = $request->serialize();
+        $request = new Request();
 
-        return stream_socket_sendto($this->socket, $datagram);
+        $request->command = $command;
+        $request->payload = $payload;
+
+        $datagram = $request->serialize()."\r\n";
+
+        return socket_write($this->socket, $datagram, strlen($datagram));
 
     }
 
     protected function read() {
 
-        $datagram = stream_socket_recvfrom($this->socket, $this->read_buffer);
+        $response = new Response();
 
-        return $datagram;
+        $datagram = $this->rawRead();
+
+        if ( is_null($datagram) ) {
+            $response->status = false;
+            $response->message = "Server has gone away";
+        } else if ( empty($datagram) ) {
+            $response->status = false;
+            $response->message = "No response received";
+        } else {
+            $response->unserialize($datagram);
+        }
+
+        return $response;
 
     }
 
@@ -98,10 +126,15 @@ class Client extends AbstractSocket {
 
         $greeter = new Greeter();
 
-        $datagram = $this->read();
+        $datagram = $this->rawRead();
 
         if ( is_null($datagram) ) {
             $greeter->status = 'greeter not received';
+            return $greeter;
+        }
+
+        if ( $datagram === false ) {
+            $greeter->status = 'server has gone away';
             return $greeter;
         }
 
@@ -109,20 +142,21 @@ class Client extends AbstractSocket {
 
     }
 
-    protected function readResponse() {
+    protected function rawRead() {
 
-        $response = new Response();
+        $datagram = '';
 
-        $datagram = $this->read();
-
-        if ( is_null($datagram) ) {
-            $response->status = false;
-            $response->message = "response not received";
-            return $response;
+        while (true) {
+            $recv = @socket_read($this->socket, $this->read_buffer, PHP_NORMAL_READ);
+            if ( $recv === false ) break;
+            if ( $recv === 0 ) return null;
+            $datagram .= $recv;
+            if(strstr($recv, PHP_EOL)) break;
         }
 
-        return $response->unserialize($datagram);
+        return trim($datagram);
 
     }
+
 
 }
