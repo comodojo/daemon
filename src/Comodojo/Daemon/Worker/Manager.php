@@ -120,7 +120,7 @@ use \Exception;
         }
 
         if ( $pid ) {
-            $this->logger->info("Worker $name created with pid $pid");
+            $this->logger->notice("Worker $name created with pid $pid");
             $this->setPid($name, $pid);
             return;
         }

@@ -221,7 +221,7 @@ class Server extends AbstractSocket {
 
                     try {
 
-                        $this->logger->info("New incoming connection ($i)");
+                        $this->logger->debug("New incoming connection ($i)");
 
                         $this->connections[$i] = new Connection($this->socket, $i);
 
@@ -386,7 +386,7 @@ class Server extends AbstractSocket {
 
         $index = $connection->getIndex();
 
-        $this->logger->info("Client hangup ($index)");
+        $this->logger->debug("Client hangup ($index)");
 
         $this->connections[$index]->destroy();
         unset($this->connections[$index]);

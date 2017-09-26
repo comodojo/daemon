@@ -84,7 +84,7 @@ abstract class Process {
 
             $signame = $this->signals->signame($signal);
 
-            $this->logger->info("Received $signame ($signal) signal, firing associated event(s)");
+            $this->logger->debug("Received $signame ($signal) signal, firing associated event(s)");
 
             $this->events->emit( new PosixEvent($signal, $this) );
             $this->events->emit( new PosixEvent($signame, $this) );

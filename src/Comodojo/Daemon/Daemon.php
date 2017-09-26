@@ -295,7 +295,7 @@ abstract class Daemon extends Process {
         }
 
         if ( $pid ) {
-            $this->logger->info("Daemon created with pid $pid");
+            $this->logger->notice("Daemon created with pid $pid");
             $this->end(0);
         }
 
