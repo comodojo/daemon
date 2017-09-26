@@ -342,7 +342,11 @@ class Server extends AbstractSocket {
 
             try {
 
-                $response->message = call_user_func($callable, $request->payload, $this->process);
+                $response->message = call_user_func(
+                    $callable,
+                    $this->process,
+                    $request->payload
+                );
 
                 $response->status = true;
 

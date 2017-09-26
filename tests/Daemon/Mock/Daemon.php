@@ -19,26 +19,26 @@ class Daemon extends AbstractDaemon {
 
     public function setup() {
 
-        $this->getSocket()->getCommands()->add('echo', function($data, $daemon) {
+        $this->getSocket()->getCommands()->add('echo', function($daemon, $data) {
             return $data;
         });
 
-        $this->getSocket()->getCommands()->add('close', function ($data, $daemon) {
+        $this->getSocket()->getCommands()->add('close', function ($daemon, $data) {
             $daemon->stop();
             return "Closing daemon";
         });
 
-        $this->getSocket()->getCommands()->add('wstatus', function ($data, $daemon) {
+        $this->getSocket()->getCommands()->add('wstatus', function ($daemon, $data) {
             $status = $daemon->getWorkers()->status();
             return $status;
         });
 
-        $this->getSocket()->getCommands()->add('block', function ($data, $daemon) {
+        $this->getSocket()->getCommands()->add('block', function ($daemon, $data) {
             sleep(5);
             return true;
         });
 
-        $this->getSocket()->getCommands()->add('pause', function ($data, $daemon) {
+        $this->getSocket()->getCommands()->add('pause', function ($daemon, $data) {
             $daemon->getWorkers()->get('target_worker')->getOutputChannel()->send('pause');
             return 1;
         });
