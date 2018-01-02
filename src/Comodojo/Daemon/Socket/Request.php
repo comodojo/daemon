@@ -19,8 +19,8 @@
 class Request extends AbstractMessage {
 
     protected $data = [
-        'command' => null,
-        'payload' => null
+        'content_type' => null,
+        'message' => null
     ];
 
 }

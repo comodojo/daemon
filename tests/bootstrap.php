@@ -4,4 +4,4 @@
 
 $loader = require __DIR__ . "/../vendor/autoload.php";
 
-$loader->addPsr4('Comodojo\\Daemon\\Tests\\', __DIR__ . "/Daemon");
+$loader->addPsr4('Comodojo\\Daemon\\Tests\\', __DIR__ . "/Comodojo/Daemon");

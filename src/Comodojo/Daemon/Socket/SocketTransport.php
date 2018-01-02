@@ -1,25 +1,74 @@
 <?php namespace Comodojo\Daemon\Socket;
 
+use \Comodojo\RpcClient\Interfaces\Transport as TransportInterface;
+use \Comodojo\Httprequest\Httprequest;
+use \phpseclib\Crypt\AES;
+use \Psr\Log\LoggerInterface;
+use \Comodojo\Exception\RpcException;
 use \Comodojo\Exception\SocketException;
 use \Exception;
 
-/**
- * @package     Comodojo Daemon
- * @author      Marco Giovinazzi <marco.giovinazzi@comodojo.org>
- * @license     MIT
- *
- * LICENSE:
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+class SocketTransport extends AbstractSocket implements TransportInterface {
 
-class Client extends AbstractSocket {
+    private $aes = null;
+
+    /**
+     * {@inheritdoc}
+     */
+    public function performCall(
+        LoggerInterface $logger,
+        $data,
+        $content_type,
+        $encrypt=false
+    ) {
+
+        try {
+
+            $logger->debug("Connecting to socket");
+
+            $this->connect();
+
+            $logger->debug("Sending RPC data");
+
+            $data = $this->can($data, $encrypt);
+
+            $response = $this->send($content_type, $data);
+
+            $this->close();
+
+            $logger->debug("Decoding RPC response");
+
+            $return = $this->uncan($response, $encrypt);
+
+        } catch (SocketException $se) {
+
+            $logger->error("Socket Transport error: ".$se->getMessage());
+
+            throw $se;
+
+        } catch (RpcException $re) {
+
+            $logger->error("RPC Client error: ".$re->getMessage());
+
+            throw $re;
+
+        } catch (Exception $e) {
+
+            $logger->critical("Generic Client error: ".$e->getMessage());
+
+            throw $e;
+
+        }
+
+        return $return;
+
+    }
+
+    public static function create($handler, $read_buffer = null) {
+
+        return new SocketTransport($handler, $read_buffer);
+
+    }
 
     public function connect() {
 
@@ -65,17 +114,9 @@ class Client extends AbstractSocket {
 
     }
 
-    public static function create($handler, $read_buffer = null) {
+    protected function send($content_type, $data) {
 
-        $client = new Client($handler, $read_buffer);
-
-        return $client->connect();
-
-    }
-
-    public function send($command, $payload = null) {
-
-        $sent = $this->write($command, $payload);
+        $sent = $this->write($content_type, $data);
 
         // TODO: manage exceptions!
 
@@ -89,12 +130,12 @@ class Client extends AbstractSocket {
 
     }
 
-    protected function write($command, $payload = null) {
+    protected function write($content_type, $data) {
 
         $request = new Request();
 
-        $request->command = $command;
-        $request->payload = $payload;
+        $request->content_type = $content_type;
+        $request->message = $data;
 
         $datagram = $request->serialize()."\r\n";
 
@@ -158,5 +199,55 @@ class Client extends AbstractSocket {
 
     }
 
+    private function can($data, $key) {
+
+        if ( !empty($key) && is_string($key) ) {
+
+            $this->aes = new AES();
+
+            $this->aes->setKey($key);
+
+            $return = 'comodojo_encrypted_request-'.base64_encode( $this->aes->encrypt($data) );
+
+        } else {
+
+            $return = $data;
+
+        }
+
+        return $return;
+
+    }
+
+    private function uncan($data, $key) {
+
+        if ( !empty($key) && is_string($key) ) {
+
+            if ( self::checkEncryptedResponseConsistency($data) === false ) throw new RpcException("Inconsistent encrypted response received");
+
+            $return = $this->aes->decrypt(base64_decode(substr($data, 28)));
+
+        } else {
+
+            $return = $data;
+
+        }
+
+        return $return;
+
+    }
+
+    /**
+    * Check if an encrypted envelope is consisent or not
+     *
+     * @param   string    $data
+     *
+     * @return  bool
+     */
+    private static function checkEncryptedResponseConsistency($data) {
+
+        return substr($data, 0, 27) == 'comodojo_encrypted_response' ? true : false;
+
+    }
 
 }

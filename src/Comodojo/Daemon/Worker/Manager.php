@@ -36,16 +36,35 @@ use \Exception;
     use EventsTrait;
     use LoggerTrait;
 
+    /**
+     * The stack :)
+     *
+     * @var array
+     */
     private $data = [];
 
+    /**
+     * Pointer to parent daemon
+     *
+     * @var Daemon
+     */
     private $daemon;
 
-    public function __construct(LoggerInterface $logger, EventsManager $events, Daemon $daemon) {
+    /**
+     * Manager constructor
+     *
+     * @param LoggerInterface $logger;
+     * @param EventsManager $events;
+     * @param Daemon $daemon;
+     */
+    public function __construct(
+        LoggerInterface $logger,
+        EventsManager $events,
+        Daemon $daemon
+    ) {
 
         $this->logger = $logger;
-
         $this->events = $events;
-
         $this->daemon = $daemon;
 
     }
@@ -58,7 +77,11 @@ use \Exception;
      * @param bool $forever
      * @return Manager
      */
-    public function install(WorkerInterface $worker, $looptime = 1, $forever = false) {
+    public function install(
+        WorkerInterface $worker,
+        $looptime = 1,
+        $forever = false
+    ) {
 
         $name = $worker->getName();
 
@@ -142,7 +165,8 @@ use \Exception;
 
         // inject events, logger and signals
         $logger = $daemon->getLogger()->withName($name);
-        $events = new EventsManager($logger);
+        // $events = new EventsManager($logger);
+        $events = clone $this->getEvents();
         $signals = new PosixSignals;
         $worker->getInstance()->setLogger($logger);
         $worker->getInstance()->setEvents($events);
@@ -189,6 +213,34 @@ use \Exception;
             }
 
         }
+
+    }
+
+    public function pause($name = null) {
+
+        if ( empty($name) ) {
+            $result = [];
+            foreach ($this->data as $name => $worker) {
+                $result[$name] = $worker->getOutputChannel()->send('pause') > 0;
+            }
+            return $result;
+        }
+
+        return $this->get($name)->getOutputChannel()->send('pause') > 0;
+
+    }
+
+    public function resume($name = null) {
+
+        if ( empty($name) ) {
+            $result = [];
+            foreach ($this->data as $name => $worker) {
+                $result[$name] = $worker->getOutputChannel()->send('resume') > 0;
+            }
+            return $result;
+        }
+
+        return $this->get($name)->getOutputChannel()->send('resume') > 0;
 
     }
 

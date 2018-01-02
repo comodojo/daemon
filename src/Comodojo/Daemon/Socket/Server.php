@@ -6,6 +6,7 @@ use \Comodojo\Foundation\Events\EventsTrait;
 use \Comodojo\Foundation\Logging\LoggerTrait;
 use \Comodojo\Foundation\Events\Manager as EventsManager;
 use \Comodojo\Foundation\Validation\DataFilter;
+use \Comodojo\RpcServer\RpcServer;
 use \Psr\Log\LoggerInterface;
 use \Comodojo\Exception\SocketException;
 use \Exception;
@@ -43,7 +44,8 @@ class Server extends AbstractSocket {
 
     private $connections = [];
 
-    protected $commands;
+    // protected $commands;
+    protected $rpc_server;
 
     protected $max_connections;
 
@@ -71,7 +73,10 @@ class Server extends AbstractSocket {
             ? self::DEFAULT_MAX_CLIENTS
             : DataFilter::filterInteger($max_connections, 1, 1024, self::DEFAULT_MAX_CLIENTS);
 
-        $this->commands = new Commands();
+        // $this->commands = new Commands();
+        $this->rpc_server = new RpcServer(RpcServer::XMLRPC);
+
+        MethodsInjector::inject($this->rpc_server, $process);
 
     }
 
@@ -90,9 +95,15 @@ class Server extends AbstractSocket {
 
     }
 
-    public function getCommands() {
+    // public function getCommands() {
+    //
+    //     return $this->commands;
+    //
+    // }
 
-        return $this->commands;
+    public function getRpcServer() {
+
+        return $this->rpc_server;
 
     }
 
@@ -336,35 +347,54 @@ class Server extends AbstractSocket {
 
         $response = new Response();
 
-        if ( $this->commands->has($request->command) ) {
+        if ( $request->content_type == 'application/json') {
+            $this->rpc_server->setProtocol(RpcServer::JSONRPC);
+        }
 
-            $callable = $this->commands->get($request->command);
+        try {
 
-            try {
+            $response->message = $this->rpc_server
+                ->setPayload($request->message)
+                ->serve();
 
-                $response->message = call_user_func(
-                    $callable,
-                    $this->process,
-                    $request->payload
-                );
+            $response->status = true;
 
-                $response->status = true;
+        } catch (Exception $e) {
 
-            } catch (Exception $e) {
-
-                $response->status = false;
-
-                $response->message = $e->getMessage();
-
-            }
-
-            return $response;
+            $response->message = $e->getMessage();
+            $response->status = false;
 
         }
 
-        $response->status = false;
-
-        $response->message = "Unknown command";
+        // if ( $this->commands->has($request->command) ) {
+        //
+        //     $callable = $this->commands->get($request->command);
+        //
+        //     try {
+        //
+        //         $response->message = call_user_func(
+        //             $callable,
+        //             $this->process,
+        //             $request->payload
+        //         );
+        //
+        //         $response->status = true;
+        //
+        //     } catch (Exception $e) {
+        //
+        //         $response->status = false;
+        //
+        //         $response->message = $e->getMessage();
+        //
+        //     }
+        //
+        //     return $response;
+        //
+        // }
+        //
+        // $response->status = false;
+        //
+        // $response->message = "Unknown command";
 
         return $response;
 
