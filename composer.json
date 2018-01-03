@@ -29,7 +29,7 @@
     },
     "minimum-stability": "dev",
     "require": {
-        "php": ">=5.4.0",
+        "php": ">=5.6.0",
         "ext-pcntl": "*",
         "ext-shmop": "*",
         "comodojo/foundation": "dev-master",

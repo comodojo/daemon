@@ -1,14 +1,13 @@
 language: php
 php:
-- 5.4
 - 5.6
 - 7
-- hhvm
+- 7.1
+- 7.2
 before_script:
-- composer install --prefer-source
+- composer update --prefer-stable --prefer-source
 - tests/bin/daemon -v -d -s
 script:
-- if [ "$TRAVIS_PHP_VERSION" == "hhvm" ]; then vendor/bin/phpunit; fi
-- if [ "$TRAVIS_PHP_VERSION" != "hhvm" ]; then vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover; fi
+- vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
 after_script:
-- bash -c 'if [ "$TRAVIS_PHP_VERSION" != "hhvm" ]; then php vendor/bin/ocular code-coverage:upload --format=php-clover coverage.clover; fi;'
+- php vendor/bin/ocular code-coverage:upload --format=php-clover coverage.clover
