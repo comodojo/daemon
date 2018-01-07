@@ -107,9 +107,7 @@ abstract class Daemon extends Process {
     }
 
     public function getWorkers() {
-
         return $this->workers;
-
     }
 
     /**

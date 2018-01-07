@@ -74,7 +74,7 @@ class Server extends AbstractSocket {
             : DataFilter::filterInteger($max_connections, 1, 1024, self::DEFAULT_MAX_CLIENTS);
 
         // $this->commands = new Commands();
-        $this->rpc_server = new RpcServer(RpcServer::XMLRPC);
+        $this->rpc_server = new RpcServer(RpcServer::XMLRPC, $logger);
 
         MethodsInjector::inject($this->rpc_server, $process);
 
