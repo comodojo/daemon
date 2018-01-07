@@ -6,7 +6,7 @@ php:
 - 7.2
 before_script:
 - composer update --prefer-stable --prefer-source
-- tests/bin/daemon -v -d -s
+- tests/bin/daemon -d -s
 script:
 - vendor/bin/phpunit --coverage-text --coverage-clover=coverage.clover
 after_script:
