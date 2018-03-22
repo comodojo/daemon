@@ -34,8 +34,8 @@
         "ext-shmop": "*",
         "ext-sockets": "*",
         "comodojo/foundation": "dev-master",
-        "comodojo/rpcserver": "^2.0",
-        "comodojo/rpcclient": "^2.0",
+        "comodojo/rpcserver": "dev-master",
+        "comodojo/rpcclient": "dev-master",
         "league/climate": "^3.0"
     },
     "require-dev": {
