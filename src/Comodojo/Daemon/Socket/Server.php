@@ -339,7 +339,11 @@ class Server extends AbstractSocket {
 
         }
 
-        return false;
+        // the null return is because of socket_read strange behaviour in
+        // darwin/bsd OS. It will never match the PHP_EOL keeping socket channel
+        // open indefinitely.
+        return null;
+        // return false;
 
     }
 
