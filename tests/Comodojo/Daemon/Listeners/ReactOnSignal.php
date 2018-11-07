@@ -14,7 +14,7 @@ class ReactOnSignal extends AbstractListener {
         $signal = $event->getName();
 
         $daemon->getLogger()->info("Hey, someone sends me a signal: ".$signal);
-var_dump($signal);
+        // var_dump($signal);
         $this->last_signal = $signal;
 
     }
