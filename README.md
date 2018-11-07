@@ -4,8 +4,6 @@
 
 Solid PHP daemon toolkit
 
-***This is the development branch, please do not use it in production***
-
 ## Installation
 
 Install [composer](https://getcomposer.org/), then:
