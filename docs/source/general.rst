@@ -7,6 +7,7 @@ General concepts
 .. _comodojo/rpcserver github repo: https://github.com/comodojo/rpcserver
 .. _wikipedia: https://en.wikipedia.org/wiki/Daemon_(computing)
 .. _shared memory segments (SHMOP): http://php.net/manual/en/book.shmop.php
+.. _daemon-examples github repository: https://github.com/marcogiovinazzi/daemon-examples
 
 This library provides basic tools to create solid PHP daemons that can:
 
@@ -41,34 +42,40 @@ The ``\Comodojo\Daemon\Daemon`` abstract class extends the previous one with all
 - creates a communication socket
 - start the internal daemon loop
 
-Creating a simple echo daemon this way took just a couple of lines:
+Creating a simple echo daemon this way requires just a couple of lines:
 
 .. code-block:: php
     :linenos:
 
-    <?php namespace My\Echo\Daemon;
+    <?php namespace DaemonExamples;
 
     use \Comodojo\Daemon\Daemon as AbstractDaemon;
     use \Comodojo\RpcServer\RpcMethod;
 
-    class Daemon extends AbstractDaemon {
+    class EchoDaemon extends AbstractDaemon {
 
         public function setup() {
-            $echo = RpcMethod::create("my.echo", function($params, $daemon) {
+
+            // define the echo method using lambda function
+            $echo = RpcMethod::create("examples.echo", function($params, $daemon) {
                 $message = $params->get('message');
                 return $message;
-            }, $daemon)
+            }, $this)
                 ->setDescription("I'm here to reply your data")
                 ->addParameter('string','message')
                 ->setReturnType('string');
 
+            // inject the method to the daemon internal RPC server
             $this->getSocket()
                 ->getRpcServer()
                 ->methods()
                 ->add($echo);
+                
         }
 
     }
+
+.. note:: This code is available in the `daemon-examples github repository`_.
 
 Daemon loop
 -----------

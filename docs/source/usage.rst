@@ -1,7 +1,9 @@
 Using the library
 =================
 
-Creating a daemon with this library requires at least two steps:
+.. _daemon-examples github repository: https://github.com/marcogiovinazzi/daemon-examples
+
+Creating a daemon using this library requires at least two steps:
 
 1. create your own daemon class, defining methods to be exposed via RPC socket,
 2. create the daemon exec file, that will init the above mentioned class providing basic configuration.
@@ -20,20 +22,20 @@ Let's take as an example the dummy *echo* daemon mentioned in :ref:`general` sec
 .. code-block:: php
     :linenos:
 
-    <?php namespace My\Echo\Daemon;
+    <?php namespace DaemonExamples;
 
     use \Comodojo\Daemon\Daemon as AbstractDaemon;
     use \Comodojo\RpcServer\RpcMethod;
 
-    class Daemon extends AbstractDaemon {
+    class EchoDaemon extends AbstractDaemon {
 
         public function setup() {
 
-            // define the echo method
-            $echo = RpcMethod::create("my.echo", function($params, $daemon) {
+            // define the echo method using lambda function
+            $echo = RpcMethod::create("examples.echo", function($params, $daemon) {
                 $message = $params->get('message');
                 return $message;
-            }, $daemon)
+            }, $this)
                 ->setDescription("I'm here to reply your data")
                 ->addParameter('string','message')
                 ->setReturnType('string');
@@ -43,11 +45,14 @@ Let's take as an example the dummy *echo* daemon mentioned in :ref:`general` sec
                 ->getRpcServer()
                 ->methods()
                 ->add($echo);
+                
         }
 
     }
 
-The *my.echo* RPC method expects a string parameter *message* that will be replied by the server.
+.. note:: This code is available in the `daemon-examples github repository`_.
+
+The *examples.echo* RPC method expects a string parameter *message* that will be replied by the server.
 
 Now that we have our first daemon, let's figure out how to start it.
 
@@ -64,18 +69,23 @@ Following an example exec script that init the daemon using an inet/tpc socket o
     #!/usr/bin/env php
     <?php
 
-    require "vendor/autoload.php";
+    $base_path = realpath(dirname(__FILE__)."/../");
+    require "$base_path/vendor/autoload.php";
 
-    use \My\Echo\Daemon;
+    use \DaemonExamples\EchoDaemon;
 
     $configuration = [
         'description' => 'Echo Daemon',
         'sockethandler' => 'tcp://127.0.0.1:10042'
     ];
 
-    $daemon = new Daemon($configuration);
+    // Create a new instance of EchoDaemon
+    $daemon = new EchoDaemon($configuration);
 
+    // Start the daemon!
     $daemon->init();
+
+.. note:: This code is available in the `daemon-examples github repository`_.
 
 .. note:: for a complete list of configuration parameters, refer to the :ref:`configuration` section.
 
