@@ -17,45 +17,45 @@ As an example, let's consider the following *CopyWorker*: it's job is to check i
 .. code-block:: php
     :linenos:
 
-<?php namespace DaemonExamples;
+    <?php namespace DaemonExamples;
 
-use \Comodojo\Daemon\Worker\AbstractWorker;
+    use \Comodojo\Daemon\Worker\AbstractWorker;
 
-class CopyWorker extends AbstractWorker {
+    class CopyWorker extends AbstractWorker {
 
-    protected $path;
+        protected $path;
 
-    // Source file
-    protected $file = 'test.txt';
-    
-    // Destination file
-    protected $copy = 'copy_test.txt';
-    
-    public function spinup() {
-
-        $this->logger->info("CopyWorker ".$this->getName()." spinning up...");
-        $this->path = realpath(dirname(__FILE__)."/../../tmp/");
-
-    }
-
-    public function loop() {
+        // Source file
+        protected $file = 'test.txt';
         
-        $filename = $this->path."/".$this->file;
+        // Destination file
+        protected $copy = 'copy_test.txt';
+        
+        public function spinup() {
 
-        if ( file_exists($filename) ) {
-            copy($filename, $this->path."/".$this->copy);
+            $this->logger->info("CopyWorker ".$this->getName()." spinning up...");
+            $this->path = realpath(dirname(__FILE__)."/../../tmp/");
+
+        }
+
+        public function loop() {
+            
+            $filename = $this->path."/".$this->file;
+
+            if ( file_exists($filename) ) {
+                copy($filename, $this->path."/".$this->copy);
+            }
+
+        }
+
+        public function spindown() {
+
+            $this->logger->info("CopyWorker ".$this->getName()." spinning down.");
+            unlink($this->path."/".$this->copy);
+
         }
 
     }
-
-    public function spindown() {
-
-        $this->logger->info("CopyWorker ".$this->getName()." spinning down.");
-        unlink($this->path."/".$this->copy);
-
-    }
-
-}
 
 .. note:: This code is available in the `daemon-examples github repository`_.
 

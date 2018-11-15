@@ -102,10 +102,20 @@ abstract class Daemon extends Process {
 
     }
 
+    /**
+     * Access the current socket
+     *
+     * @return SocketServer
+     */
     public function getSocket() {
         return $this->socket;
     }
 
+    /**
+     * Access the workers stack
+     *
+     * @return WorkerManager
+     */
     public function getWorkers() {
         return $this->workers;
     }
