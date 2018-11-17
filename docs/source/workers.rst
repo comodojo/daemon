@@ -103,4 +103,46 @@ The ``install()`` method allows also to enable the *forever* mode for the worker
 Communicating with the worker
 -----------------------------
 
+When a worker is created, the daemon will open a bidirectional communication channel using standard Unix shared memory segments. This channel will be kept opened for the entire life of the process.
+
+Using this channel:
+
+1. the daemon is able to pool the worker to konw its state (running, paused, ...) and trigger actions if the daemon crashes (worker watchdog);
+2. the user can send commands to the worker using the daemon RPC socket.
+
+While the first point is totally automated, the second one requires a user interaction.
+
+Using default commands
+......................
+
+By default, the RPC socket expose a couple of method to manage workers:
+
+1. ``worker.list()`` - get the list of the currently installed workers
+2. ``worker.status(worker_name)`` - get the status of the worker
+    - 0 => SPINUP
+    - 1 => LOOPING
+    - 2 => PAUSED
+    - 3 => SPINDOWN
+3. ``worker.pause(worker_name*)`` - pause the worker
+4. ``worker.resume(worker_name*)`` - resume the worker
+
+For example, this RPC request can be used to request the status of all workers:
+
+.. code-block:: php
+    :linenos:
+
+    $request = \Comodojo\RpcClient\RpcRequest::create("worker.status", []);
+
+And the following one to pause the *handyman* worker:
+
+.. code-block:: php
+    :linenos:
+
+    $request = RpcRequest::create("worker.pause", ["handyman"]);
+
+.. note:: This code is available in the `daemon-examples github repository`_.
+
+Defining custom commands
+........................
+
 TBW

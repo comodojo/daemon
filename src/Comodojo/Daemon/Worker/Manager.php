@@ -132,7 +132,18 @@ use \Exception;
 
     }
 
-    public function start($name, $unmask = false) {
+    public function start($name, $restart = false) {
+
+        // re-install shmop (if restart)
+        if ( $restart === true ) {
+            $worker = $this->get($name);
+            // close the previous channels
+            $worker->getInputChannel()->close();
+            $worker->getOutputChannel()->close();
+            // open brand new channels
+            $worker->setInputChannel(new SharedMemory((int)'1'.hexdec($worker->getInstance()->getId())))
+                ->setOutputChannel(new SharedMemory((int)'2'.hexdec($worker->getInstance()->getId())));
+        }
 
         // fork worker
         $pid = pcntl_fork();
@@ -159,7 +170,7 @@ use \Exception;
         $daemon->getSignals()->any()->setDefault();
 
         // unmask signals (if restart)
-        if ( $unmask === true ) {
+        if ( $restart === true ) {
             $daemon->getSignals()->any()->unmask();
         }
 
