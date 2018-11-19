@@ -32,7 +32,7 @@ abstract class AbstractWorker implements WorkerInterface {
 
     private $id;
 
-    public function __construct($name=null) {
+    public function __construct($name = null) {
 
         $this->id = uniqid();
 

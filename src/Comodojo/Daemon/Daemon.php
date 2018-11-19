@@ -67,7 +67,7 @@ abstract class Daemon extends Process {
      * @property LoggerInterface $logger
      * @property int $pid
      */
-    public function __construct($properties = [], LoggerInterface $logger = null, EventsManager $events = null){
+    public function __construct($properties = [], LoggerInterface $logger = null, EventsManager $events = null) {
 
         if ( !Checks::multithread() ) {
             throw new Exception("Missing pcntl fork");
@@ -98,7 +98,7 @@ abstract class Daemon extends Process {
         $this->console = new CLImate();
         $this->console->description($properties->description);
         $args = new $properties->arguments;
-        $this->console->arguments->add( $args::create()->export() );
+        $this->console->arguments->add($args::create()->export());
 
     }
 
@@ -194,7 +194,7 @@ abstract class Daemon extends Process {
 
         $this->setup();
 
-        foreach ($this->workers as $name => $worker) {
+        foreach ( $this->workers as $name => $worker ) {
 
             $this->workers->start($name);
 
@@ -321,9 +321,9 @@ abstract class Daemon extends Process {
 
     private function detach() {
 
-        if (is_resource(STDOUT)) fclose(STDOUT);
-        if (is_resource(STDERR)) fclose(STDERR);
-        if (is_resource(STDIN)) fclose(STDIN);
+        if ( is_resource(STDOUT) ) fclose(STDOUT);
+        if ( is_resource(STDERR) ) fclose(STDERR);
+        if ( is_resource(STDIN) ) fclose(STDIN);
 
         // become a session leader
         $sid = posix_setsid();

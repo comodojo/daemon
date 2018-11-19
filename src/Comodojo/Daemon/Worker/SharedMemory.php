@@ -46,7 +46,7 @@ class SharedMemory {
 
     public function delete() {
 
-        return shmop_write($this->key, str_pad('',128), 0);
+        return shmop_write($this->key, str_pad('', 128), 0);
 
     }
 

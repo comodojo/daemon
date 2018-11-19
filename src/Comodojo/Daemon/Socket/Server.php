@@ -169,7 +169,7 @@ class Server extends AbstractSocket {
 
             do {
                 $this->loop();
-            } while ($this->active);
+            } while ( $this->active );
 
         } catch (Exception $e) {
 
@@ -205,7 +205,7 @@ class Server extends AbstractSocket {
 
         $select = @socket_select($sockets, $write, $except, $this->timeout);
 
-        if ($select === false) {
+        if ( $select === false ) {
 
             if ( $this->checkSocketError() && $this->active ) {
                 $this->logger->debug("Socket reset due to incoming signal");
@@ -219,13 +219,13 @@ class Server extends AbstractSocket {
 
         }
 
-        if( $select < 1 ) {
+        if ( $select < 1 ) {
             return;
         }
 
-        if( in_array($this->socket, $sockets) ) {
+        if ( in_array($this->socket, $sockets) ) {
 
-            for ($i=0; $i < $select; $i++) {
+            for ( $i = 0; $i < $select; $i++ ) {
 
                 if ( empty($this->connections[$i]) ) {
 
@@ -251,17 +251,17 @@ class Server extends AbstractSocket {
 
         }
 
-        for ($i = 0; $i < $this->max_connections; $i++) {
+        for ( $i = 0; $i < $this->max_connections; $i++ ) {
 
-            if (isset($this->connections[$i])) {
+            if ( isset($this->connections[$i]) ) {
 
                 $client = $this->connections[$i];
 
-                if (in_array($client->getSocket(), $sockets)) {
+                if ( in_array($client->getSocket(), $sockets) ) {
 
                     $message = $this->read($client);
 
-                    if ($message === null) {
+                    if ( $message === null ) {
                     // if ($message == null) {
                          $this->hangup($client);
                     } else if ( $message === false ) {
@@ -293,16 +293,16 @@ class Server extends AbstractSocket {
         $datagram = '';
         $socket = $connection->getSocket();
 
-        while (true) {
+        while ( true ) {
             $recv = @socket_read($socket, $this->read_buffer, PHP_NORMAL_READ);
             if ( $recv === false ) return null;
             $datagram .= $recv;
-            if (empty($recv) || strstr($recv, PHP_EOL)) break;
+            if ( empty($recv) || strstr($recv, PHP_EOL) ) break;
         }
 
         $datagram = trim($datagram);
 
-        if ( !empty($datagram) && $datagram !== false) {
+        if ( !empty($datagram) && $datagram !== false ) {
 
             $message = new Request();
 
@@ -323,7 +323,7 @@ class Server extends AbstractSocket {
 
         $response = new Response();
 
-        if ( $request->content_type == 'application/json') {
+        if ( $request->content_type == 'application/json' ) {
             $this->rpc_server->setProtocol(RpcServer::JSONRPC);
         }
 
@@ -352,7 +352,7 @@ class Server extends AbstractSocket {
 
         $this->logger->debug("Opening connection ($idx), sending greeter");
 
-        $this->events->emit( new SocketEvent('client.connect', $this->process) );
+        $this->events->emit(new SocketEvent('client.connect', $this->process));
 
         $message = new Greeter();
 
@@ -371,7 +371,7 @@ class Server extends AbstractSocket {
         $this->connections[$index]->destroy();
         unset($this->connections[$index]);
 
-        $this->events->emit( new SocketEvent('client.hangup', $this->process) );
+        $this->events->emit(new SocketEvent('client.hangup', $this->process));
 
     }
 

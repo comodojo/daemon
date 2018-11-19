@@ -49,7 +49,7 @@ class Loop implements Countable {
 
         $this->events = $worker->getInstance()->getEvents();
 
-        $this->looptime = DataFilter::filterInteger($worker->getLooptime(), $min=1, $max=PHP_INT_MAX, $default=1);
+        $this->looptime = DataFilter::filterInteger($worker->getLooptime(), $min = 1, $max = PHP_INT_MAX, $default = 1);
 
         $this->events->subscribe('daemon.worker.stop', '\Comodojo\Daemon\Listeners\StopWorker');
         $this->events->subscribe('daemon.worker.pause', '\Comodojo\Daemon\Listeners\PauseWorker');
@@ -73,7 +73,7 @@ class Loop implements Countable {
 
         // start looping
         $this->setStatus(self::LOOPING);
-        while ($this->active) {
+        while ( $this->active ) {
 
             if ( $this->paused ) {
                 $this->setStatus(self::PAUSED);
@@ -85,7 +85,7 @@ class Loop implements Countable {
 
             $start = microtime(true);
 
-            $this->events->emit( new WorkerEvent('loopstart', $this, $this->worker) );
+            $this->events->emit(new WorkerEvent('loopstart', $this, $this->worker));
 
             $this->worker->getInstance()->loop();
 
@@ -93,7 +93,7 @@ class Loop implements Countable {
 
             $elapsed = (microtime(true) - $start);
 
-            $this->events->emit( new WorkerEvent('loopstop', $this, $this->worker) );
+            $this->events->emit(new WorkerEvent('loopstop', $this, $this->worker));
 
             $lefttime = $this->looptime - $elapsed;
 
@@ -139,7 +139,7 @@ class Loop implements Countable {
         $signal = $this->worker->getOutputChannel()->read();
 
         if ( !empty($signal) ) {
-            $this->events->emit( new WorkerEvent($signal, $this, $this->worker) );
+            $this->events->emit(new WorkerEvent($signal, $this, $this->worker));
             $this->worker->getOutputChannel()->delete();
         }
 

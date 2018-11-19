@@ -74,17 +74,17 @@ abstract class AbstractSocket {
 
         $this->handler = $handler;
 
-        list($domain, $resource) = preg_split( '@(:\/\/)@', $handler );
+        list($domain, $resource) = preg_split('@(:\/\/)@', $handler);
 
         $domain = strtolower($domain);
 
         if ( $domain == 'unix' ) {
-            $this->socket_domain =  AF_UNIX;
+            $this->socket_domain = AF_UNIX;
             $this->socket_resource = $resource;
         } else {
             $this->socket_domain = AF_INET;
             $this->socket_protocol = $domain == 'udp' ? SOL_UDP : SOL_TCP;
-            if (strpos($resource, ':') !== false) {
+            if ( strpos($resource, ':') !== false ) {
                 list($this->socket_resource, $this->socket_port) = explode(":", $resource);
             } else {
                 $this->socket_resource = $resource;

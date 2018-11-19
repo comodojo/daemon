@@ -28,9 +28,9 @@ class WorkerWatchdog extends AbstractListener {
         $workers = $daemon->getWorkers();
         $logger = $daemon->getLogger();
 
-        foreach ($workers as $name => $worker) {
+        foreach ( $workers as $name => $worker ) {
 
-            if ($workers->running($worker->getPid())) {
+            if ( $workers->running($worker->getPid()) ) {
 
                 $logger->debug("Worker $name seems to be running");
 
@@ -38,7 +38,7 @@ class WorkerWatchdog extends AbstractListener {
 
                 $logger->warning("Worker $name has exited");
 
-                if ($worker->getForever()) {
+                if ( $worker->getForever() ) {
                     $logger->warning("Attempting to restart $name");
                     $workers->start($name, true);
                 } else {
