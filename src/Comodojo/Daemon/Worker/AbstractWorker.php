@@ -40,22 +40,37 @@ abstract class AbstractWorker implements WorkerInterface {
 
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getName() {
 
         return $this->name;
 
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getId() {
 
         return $this->id;
 
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function spinup() {}
 
+    /**
+     * {@inheritdoc}
+     */
     public function spindown() {}
 
+    /**
+     * {@inheritdoc}
+     */
     abstract public function loop();
 
 }

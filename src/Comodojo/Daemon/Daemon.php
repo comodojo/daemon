@@ -45,7 +45,7 @@ abstract class Daemon extends Process {
 
     protected $is_supervisor;
 
-    protected static $default_properties = array(
+    protected static $default_properties = [
         'pidfile' => 'daemon.pid',
         'sockethandler' => 'unix://daemon.sock',
         'socketbuffer' => 1024,
@@ -54,7 +54,7 @@ abstract class Daemon extends Process {
         'niceness' => 0,
         'arguments' => '\\Comodojo\\Daemon\\Console\\DaemonArguments',
         'description' => 'Comodojo Daemon'
-    );
+    ];
 
     /**
      * Daemon constructor
@@ -224,6 +224,10 @@ abstract class Daemon extends Process {
 
     }
 
+    /**
+     * Stop the daemon, closing the socket and stopping all the workers (if any)
+     *
+     */
     public function stop() {
 
         $this->logger->notice("Stopping daemon...");
@@ -275,6 +279,10 @@ abstract class Daemon extends Process {
 
     }
 
+    /**
+     * Declass the daemon to a normal supervised process (daemon to worker transition)
+     *
+     */
     public function declass() {
 
         // remove supervisor flag

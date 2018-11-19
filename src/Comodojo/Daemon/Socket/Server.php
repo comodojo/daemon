@@ -32,8 +32,16 @@ class Server extends AbstractSocket {
     use EventsTrait;
     use LoggerTrait;
 
+    /*
+     * Socket default timeout
+     * @var int
+     */
     const DEFAULT_TIMEOUT = 10;
 
+    /*
+     * Socket default max client
+     * @var int
+     */
     const DEFAULT_MAX_CLIENTS = 10;
 
     private $active = false;
@@ -44,11 +52,15 @@ class Server extends AbstractSocket {
 
     private $connections = [];
 
-    // protected $commands;
     protected $rpc_server;
 
     protected $max_connections;
 
+    /*
+     * Class constructor
+     *
+     * @param int
+     */
     public function __construct(
         $handler,
         LoggerInterface $logger,
@@ -73,7 +85,6 @@ class Server extends AbstractSocket {
             ? self::DEFAULT_MAX_CLIENTS
             : DataFilter::filterInteger($max_connections, 1, 1024, self::DEFAULT_MAX_CLIENTS);
 
-        // $this->commands = new Commands();
         $this->rpc_server = new RpcServer(RpcServer::XMLRPC, $logger);
 
         MethodsInjector::inject($this->rpc_server, $process);
@@ -94,12 +105,6 @@ class Server extends AbstractSocket {
         return $socket->connect();
 
     }
-
-    // public function getCommands() {
-    //
-    //     return $this->commands;
-    //
-    // }
 
     public function getRpcServer() {
 
@@ -198,12 +203,6 @@ class Server extends AbstractSocket {
             return $connection->getSocket();
         }, $this->connections));
 
-        // for ($i = 0; $i < $this->max_connections; $i++) {
-        //     if (isset($this->connections[$i])) {
-        //         $sockets[$i + 1] = $this->connections[$i]->getSocket();
-        //     }
-        // }
-
         $select = @socket_select($sockets, $write, $except, $this->timeout);
 
         if ($select === false) {
@@ -249,30 +248,6 @@ class Server extends AbstractSocket {
                 }
 
             }
-
-            // for ($i=0; $i < $this->max_connections; $i++) {
-            //
-            //     if ( empty($this->connections[$i]) ) {
-            //
-            //         try {
-            //
-            //             $this->logger->info("New incoming connection ($i)");
-            //
-            //             $this->connections[$i] = new Connection($this->socket, $i);
-            //
-            //             $this->open($this->connections[$i], 'connected');
-            //
-            //         } catch (SocketException $se) {
-            //
-            //             $this->logger->warning("Error accepting client: ".$se->getMessage());
-            //
-            //         }
-            //
-            //         unset($sockets[$i]);
-            //
-            //     }
-            //
-            // }
 
         }
 
@@ -320,8 +295,6 @@ class Server extends AbstractSocket {
 
         while (true) {
             $recv = @socket_read($socket, $this->read_buffer, PHP_NORMAL_READ);
-            // if ( $recv === false ) break;
-            // if ( $recv === 0 ) return null;
             if ( $recv === false ) return null;
             $datagram .= $recv;
             if (empty($recv) || strstr($recv, PHP_EOL)) break;
@@ -343,7 +316,6 @@ class Server extends AbstractSocket {
         // darwin/bsd OS. It will never match the PHP_EOL keeping socket channel
         // open indefinitely.
         return null;
-        // return false;
 
     }
 
@@ -369,36 +341,6 @@ class Server extends AbstractSocket {
             $response->status = false;
 
         }
-
-        // if ( $this->commands->has($request->command) ) {
-        //
-        //     $callable = $this->commands->get($request->command);
-        //
-        //     try {
-        //
-        //         $response->message = call_user_func(
-        //             $callable,
-        //             $this->process,
-        //             $request->payload
-        //         );
-        //
-        //         $response->status = true;
-        //
-        //     } catch (Exception $e) {
-        //
-        //         $response->status = false;
-        //
-        //         $response->message = $e->getMessage();
-        //
-        //     }
-        //
-        //     return $response;
-        //
-        // }
-        //
-        // $response->status = false;
-        //
-        // $response->message = "Unknown command";
 
         return $response;
 

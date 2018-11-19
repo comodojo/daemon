@@ -126,6 +126,8 @@ By default, the RPC socket expose a couple of method to manage workers:
 3. ``worker.pause(worker_name*)`` - pause the worker
 4. ``worker.resume(worker_name*)`` - resume the worker
 
+These commands are automatically sent to the communication channel (using shmop), trapped by the worker loop and then propagated as ``\Comodojo\Daemon\Events\WorkerEvent``. A listener on the worker side is responsible for executing the related action.
+
 For example, this RPC request can be used to request the status of all workers:
 
 .. code-block:: php
@@ -140,9 +142,128 @@ And the following one to pause the *handyman* worker:
 
     $request = RpcRequest::create("worker.pause", ["handyman"]);
 
+Defining custom actions
+.......................
+
+Custom actions can be defined in the worker to trap user defined commands, using the same mechanism described in the previous section.
+
+As an example, let's customize the CopyDaemon/CopyWorker to change the output filename if a *handyman.changename* request is received.
+
+To create this custom action, first step is to create a custom listener to handle the WorkerEvent:
+
+.. code-block:: php
+    :linenos:
+
+    <?php namespace DaemonExamples;
+
+    use \League\Event\AbstractListener;
+    use \League\Event\EventInterface;
+    
+    class ChangeNameListener extends AbstractListener {
+
+        public function handle(EventInterface $event) {
+
+            // get the current worker instance
+            $worker = $event->getWorker()->getInstance();
+
+            // invoke the changeName method
+            $worker->changeName();
+
+            return true;
+
+        }
+
+    }
+
+This listener should be hooked to a custom event at the worker level. The modified version of the CopyWorker is:
+
+.. code-block:: php
+    :linenos:
+
+    <?php namespace DaemonExamples;
+
+    use \Comodojo\Daemon\Worker\AbstractWorker;
+
+    class CopyWorker extends AbstractWorker {
+
+        protected $path;
+
+        protected $file = 'test.txt';
+        
+        protected $copy = 'copy_test.txt';
+        
+        public function spinup() {
+
+            $this->logger->info("CopyWorker ".$this->getName()." spinning up...");
+            $this->path = realpath(dirname(__FILE__)."/../../tmp/");
+
+            // Hook on daemon.worker.changename event to change the output file name
+            $this->getEvents()
+                ->subscribe('daemon.worker.changename', '\DaemonExamples\ChangeNameListener');
+
+        }
+
+        public function loop() {
+            
+            $filename = $this->path."/".$this->file;
+
+            if ( file_exists($filename) ) {
+                $this->logger->info("Copying file ".$this->file." to ".$this->copy);
+                copy($filename, $this->path."/".$this->copy);
+            }
+
+        }
+
+        public function spindown() {
+
+            $this->logger->info("CopyWorker ".$this->getName()." spinning down.");
+            unlink($this->path."/".$this->copy);
+
+        }
+
+        // this method will be invoked by the listener for daemon.worker.changename event
+        public function changeName() {
+            $this->logger->info("Changing filename...");
+            $this->copy = 'copy_test_2.txt';
+
+        }
+
+    }
+
 .. note:: This code is available in the `daemon-examples github repository`_.
 
-Defining custom commands
-........................
+The last step is to create a custom RPC Method in the daemon that can handle the *handyman.changename* request translating it to a message *changename* propagated in the communication channel (output side):
 
-TBW
+.. code-block:: php
+    :linenos:
+
+    <?php namespace DaemonExamples;
+
+    use \Comodojo\Daemon\Daemon as AbstractDaemon;
+    use \Comodojo\RpcServer\RpcMethod;
+
+    class CopyDaemon extends AbstractDaemon {
+
+        public function setup() {
+
+            // define the changename method using lambda function
+            $change = RpcMethod::create("handyman.changename", function($params, $daemon) {
+                return $daemon->getWorkers()
+                ->get("handyman")
+                ->getOutputChannel()
+                ->send('changename') > 0;
+            }, $this)
+                ->setDescription("Change the output file name")
+                ->setReturnType('string');
+
+            // inject the method to the daemon internal RPC server
+            $this->getSocket()
+                ->getRpcServer()
+                ->methods()
+                ->add($change);
+                
+        }
+
+    }
+
+.. note:: This code is available in the `daemon-examples github repository`_.
