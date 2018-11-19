@@ -93,8 +93,8 @@ use \Exception;
             ->setInstance($worker)
             ->setLooptime($looptime)
             ->setForever($forever)
-            ->setInputChannel(new SharedMemory((int)'1'.hexdec($worker->getId())))
-            ->setOutputChannel(new SharedMemory((int)'2'.hexdec($worker->getId())));
+            ->setInputChannel(new SharedMemory((int) '1'.hexdec($worker->getId())))
+            ->setOutputChannel(new SharedMemory((int) '2'.hexdec($worker->getId())));
 
         $this->data[$name] = $w;
 
@@ -141,8 +141,8 @@ use \Exception;
             $worker->getInputChannel()->close();
             $worker->getOutputChannel()->close();
             // open brand new channels
-            $worker->setInputChannel(new SharedMemory((int)'1'.hexdec($worker->getInstance()->getId())))
-                ->setOutputChannel(new SharedMemory((int)'2'.hexdec($worker->getInstance()->getId())));
+            $worker->setInputChannel(new SharedMemory((int) '1'.hexdec($worker->getInstance()->getId())))
+                ->setOutputChannel(new SharedMemory((int) '2'.hexdec($worker->getInstance()->getId())));
         }
 
         // fork worker
@@ -195,7 +195,7 @@ use \Exception;
 
     public function stop($name = null) {
 
-        foreach ($this->data as $wname => $worker) {
+        foreach ( $this->data as $wname => $worker ) {
 
             $wpid = $worker->getPid();
 
@@ -207,7 +207,7 @@ use \Exception;
                 // try to gently ask the worker to close
                 $worker->getOutputChannel()->send('stop');
 
-                while (time() < $time) {
+                while ( time() < $time ) {
 
                     if ( !$this->running($wpid) ) break;
                     usleep(20000);
@@ -219,7 +219,7 @@ use \Exception;
                 $worker->getOutputChannel()->close();
 
                 // terminate the worker if still alive
-                if ($this->running($wpid)) ProcessTools::term($wpid, 5, SIGTERM);
+                if ( $this->running($wpid) ) ProcessTools::term($wpid, 5, SIGTERM);
 
             }
 
@@ -231,7 +231,7 @@ use \Exception;
 
         if ( empty($name) ) {
             $result = [];
-            foreach ($this->data as $name => $worker) {
+            foreach ( $this->data as $name => $worker ) {
                 $result[$name] = $worker->getOutputChannel()->send('pause') > 0;
             }
             return $result;
@@ -245,7 +245,7 @@ use \Exception;
 
         if ( empty($name) ) {
             $result = [];
-            foreach ($this->data as $name => $worker) {
+            foreach ( $this->data as $name => $worker ) {
                 $result[$name] = $worker->getOutputChannel()->send('resume') > 0;
             }
             return $result;
@@ -266,7 +266,7 @@ use \Exception;
         if ( $name === null ) {
 
             $result = [];
-            foreach ($this->data as $name => $worker) {
+            foreach ( $this->data as $name => $worker ) {
                 $result[$name] = $this->getStatus($worker);
             }
             return $result;

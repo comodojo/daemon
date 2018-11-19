@@ -55,7 +55,7 @@ class Connection {
         $err_code = socket_last_error($socket);
         $err_string = socket_strerror($err_code);
 
-        if ( $err_code === 11 || strtolower($err_string) == 'success') return true;
+        if ( $err_code === 11 || strtolower($err_string) == 'success' ) return true;
 
         return $err_string;
 

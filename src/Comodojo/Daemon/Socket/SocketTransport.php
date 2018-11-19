@@ -19,7 +19,7 @@ class SocketTransport extends AbstractSocket implements TransportInterface {
         LoggerInterface $logger,
         $data,
         $content_type,
-        $encrypt=false
+        $encrypt = false
     ) {
 
         try {
@@ -187,12 +187,12 @@ class SocketTransport extends AbstractSocket implements TransportInterface {
 
         $datagram = '';
 
-        while (true) {
+        while ( true ) {
             $recv = @socket_read($this->socket, $this->read_buffer, PHP_NORMAL_READ);
             if ( $recv === false ) break;
             if ( $recv === 0 ) return null;
             $datagram .= $recv;
-            if(strstr($recv, PHP_EOL)) break;
+            if ( strstr($recv, PHP_EOL) ) break;
         }
 
         return trim($datagram);
@@ -207,7 +207,7 @@ class SocketTransport extends AbstractSocket implements TransportInterface {
 
             $this->aes->setKey($key);
 
-            $return = 'comodojo_encrypted_request-'.base64_encode( $this->aes->encrypt($data) );
+            $return = 'comodojo_encrypted_request-'.base64_encode($this->aes->encrypt($data));
 
         } else {
 
@@ -238,7 +238,7 @@ class SocketTransport extends AbstractSocket implements TransportInterface {
     }
 
     /**
-    * Check if an encrypted envelope is consisent or not
+     * Check if an encrypted envelope is consisent or not
      *
      * @param   string    $data
      *

@@ -44,7 +44,7 @@ abstract class Process {
      * @param LoggerInterface $logger;
      * @param EventsManager $events;
      */
-    public function __construct($niceness = null, LoggerInterface $logger = null, EventsManager $events = null){
+    public function __construct($niceness = null, LoggerInterface $logger = null, EventsManager $events = null) {
 
         if ( !Checks::cli() ) {
             throw new RuntimeException("Process can run only in cli SAPI");
@@ -86,8 +86,8 @@ abstract class Process {
 
             $this->logger->debug("Received $signame ($signal) signal, firing associated event(s)");
 
-            $this->events->emit( new PosixEvent($signal, $this) );
-            $this->events->emit( new PosixEvent($signame, $this) );
+            $this->events->emit(new PosixEvent($signal, $this));
+            $this->events->emit(new PosixEvent($signame, $this));
 
         }
 

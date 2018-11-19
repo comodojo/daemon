@@ -91,7 +91,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
     public function on(...$signals) {
 
-        foreach ($signals as $signal) {
+        foreach ( $signals as $signal ) {
             if ( !isset($this[$signal]) ) throw new Exception("Signal $signal not supported");
         }
 
@@ -113,9 +113,9 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
         if ( empty($this->pointer) ) {
             $result = [];
-            foreach ($this as $signo => $signame) {
+            foreach ( $this as $signo => $signame ) {
                 $result[] = $re = pcntl_signal($signo, $callable);
-                if (!$re) echo "\n>>>Signal $signo (".$this->sigName($signo).") failed\n";
+                if ( !$re ) echo "\n>>>Signal $signo (".$this->sigName($signo).") failed\n";
             }
             return !in_array(false, $result);
         }
@@ -130,7 +130,7 @@ class PosixSignals implements Iterator, Countable, ArrayAccess {
 
         if ( empty($this->pointer) ) {
             $result = [];
-            foreach ($this as $signo => $signame) {
+            foreach ( $this as $signo => $signame ) {
                 $result[] = pcntl_signal($signo, SIG_DFL);
             }
             return !in_array(false, $result);
