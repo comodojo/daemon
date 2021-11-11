@@ -1,5 +1,5 @@
 {
-    "name": "pmarcelli/daemon",
+    "name": "comodojo/daemon",
     "description": "Solid PHP daemon toolkit",
     "license": "MIT",
     "type": "library",
@@ -35,9 +35,9 @@
         "ext-pcntl": "*",
         "ext-shmop": "*",
         "ext-sockets": "*",
-        "pmarcelli/foundation": "dev-foundation_u7320",
-        "pmarcelli/rpcserver": "dev-rpcserver_u7320",
-        "pmarcelli/rpcclient": "dev-rpcclient_u7320",
+        "comodojo/foundation": "dev-master",
+        "comodojo/rpcserver": "dev-master",
+        "comodojo/rpcclient": "dev-master",
         "league/climate": "^3.0"
     },
     "require-dev": {
