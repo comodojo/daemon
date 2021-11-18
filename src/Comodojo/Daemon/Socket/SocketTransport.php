@@ -2,7 +2,7 @@
 
 use \Comodojo\RpcClient\Interfaces\Transport as TransportInterface;
 use \Comodojo\Httprequest\Httprequest;
-use \phpseclib\Crypt\AES;
+use phpseclib3\Crypt\AES;
 use \Psr\Log\LoggerInterface;
 use \Comodojo\Exception\RpcException;
 use \Comodojo\Exception\SocketException;
@@ -203,8 +203,9 @@ class SocketTransport extends AbstractSocket implements TransportInterface {
 
         if ( !empty($key) && is_string($key) ) {
 
-            $this->aes = new AES();
+            $this->aes = new AES('ecb');
 
+            //Only keys of sizes 16, 24 or 32 supported
             $this->aes->setKey($key);
 
             $return = 'comodojo_encrypted_request-'.base64_encode($this->aes->encrypt($data));

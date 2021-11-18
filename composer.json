@@ -1,5 +1,5 @@
 {
-    "name": "comodojo/daemon",
+    "name": "pmarcelli/daemon",
     "description": "Solid PHP daemon toolkit",
     "license": "MIT",
     "type": "library",
@@ -29,16 +29,15 @@
             "Comodojo\\Daemon\\": "src/Comodojo/Daemon"
         }
     },
-    "minimum-stability": "dev",
     "require": {
         "php": ">=5.6.0",
         "ext-posix": "*",
         "ext-pcntl": "*",
         "ext-shmop": "*",
         "ext-sockets": "*",
-        "comodojo/foundation": "dev-master",
-        "comodojo/rpcserver": "dev-master",
-        "comodojo/rpcclient": "dev-master",
+        "pmarcelli/foundation": "dev-foundation_u7320",
+        "pmarcelli/rpcserver": "dev-rpcserver_u7320",
+        "pmarcelli/rpcclient": "dev-rpcclient_u7320",
         "league/climate": "^3.0"
     },
     "require-dev": {
